@@ -10,8 +10,10 @@
 //  stackoverflow.com/questions/43075617/python-equivalent-to-rs-pretty
 // "Pretty function equivalent to R's pretty()"
 // 
-// Answer by "BART"
+//
 
+
+// Answer by "BART" to a stack overflow question, adapted to JS
 function nicenumber(x, round) {
   const exp = Math.floor(Math.log10(x));
   const f = x / Math.pow(10,exp);
@@ -78,6 +80,11 @@ function pretty_num(low, high, n, include10) {
   }
   return(propRange);
 }
+// process_tm() we need to be able to convert from decimal unit to a print string of time
+//   and then back again.  This can be hard because there are multiple string representations
+//   of time, some of which are better depending on how many digits of precision we desire.
+//   "unit" in this case can be negative for nanoseconds, but above seconds, we find that "minutes"
+//   Or "10 minutes" or "Hour" units have different properties.
 const process_tm = function(on_time, unit) {
   if (on_time.length == 0) { return(0); }
   let splitp = on_time.split(".");
@@ -101,6 +108,7 @@ const process_tm = function(on_time, unit) {
 }
 
 const total_secs = function(tmstring) {
+  // Given a String, let us ignore fractional milkiseconds/seconds, and merely get seconds from midngiht correct.
   if (tmstring.length == 0) { return(0); }
   let hms = tmstring.split(":"); 
   if (tmstring[0] == ':') { 
@@ -116,6 +124,16 @@ const total_secs = function(tmstring) {
 }
 // total_secs = my_this.pretty_num.total_secs;
 const process_del_tm = function(t1, unit, t0) {
+  // "Process del_tm".
+  //
+  // We are looking for most precise measurement of the dfferentce between
+  // a timepoint measured at base "t0" versus time "t1" with a unit of difference
+  // measured by the "unit" operator ("seconds" are "1", negative numbers are milliseconds/microseconds/manoseconds,
+  //    but positive numbers are minutes/hours/days)
+  //
+  // This creates a challenge, as times like "12:00:00.043023" and "13:00:00.043023" might be exactly an hour
+  //   off from each other, but in nanoseconds their difference might be incalculable in float64 time.
+  //
   if (t1.length == 0) { return(0); }
   if (typeof t1 === 'number') {
     console.log("Hey t1 given is a number not good!"); debugger;
