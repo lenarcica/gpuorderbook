@@ -839,6 +839,6 @@ class obwidget {
   }
 }
 
-const exports = {"obwidget": obwidget, "d3":d3};
+const exports = {"obwidget": obwidget};
 //export default {"obwidget": obwidget};
 module.exports = exports;
