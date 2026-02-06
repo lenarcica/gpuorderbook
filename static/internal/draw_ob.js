@@ -6,6 +6,7 @@
 // significant overhead in devising pipelines from modules/buffers/Redner descriptions etc...
 // and it can be difficult to remember the order of operations or purposes of these items.
 
+// Just a console.log() configuration library:
 const printer = require("./printer.js");
 const is_numeric = printer.is_numeric;
 var PRINT_N = printer.my_printer(1,"draw_ob:");
@@ -32,30 +33,10 @@ function generate_gpu_renderPassDescriptor() {
   };  
   return(renderPassDesc);
 }
-/**
-function populate_gpu_pipeline(gpu_pipeline, gpu_context, adapter, device, a_obwidget) {
-  const verbose = a_obwidget.verbose;
-  const PRINT_N = printer.my_printer(verbose, "populate_gpu_pipeline()");
-  if ((!(gpu_pipeline)) || (!(gpu_pipeline.nbbo_pipeline))) {
-    PRINT_N(1, " Reconstructing gpu pipeline");
-    const module_nbbo = generate_gpu_module(device, data_module_nbbo, verbose);
-    const module_buys = generate_gpu_module(device, data_module_buys, verbose);
-    gpu_pipeline = {
-       device:device, adapter:adapter,
-       module_nbbo: module_nbbo, module_buys:module_buys, 
-       nbbo_pipeline: generate_inividual_pipeline(device, module_nbbo, verbose, "nbbo_pipeline"),
-       buys_pipeline: generate_inividual_pipeline(device, module_buys, verbose, "buys_pipeline"),
-       context: gpu_context,
-       encoder: null
-    }
-    fill_uniform_buffer(a_obwidget.data, gpu_pipeline) 
-    populate_device_verts_buffers(device, gpu_pipeline)
-    update_uniform_device_buffer(device,new_pj, gpu_pipeline) 
-    
-  }
-  return(gpu_pipeline);
-}
-**/
+
+// generate_individual_pipeline()
+//   Pipelines combine the "module" (the WebGPU code) with characteristics
+//   of the GPU structure.  For 2D this is simpler than requirements for 3D
 function generate_individual_pipeline( device, module, verbose, what_pipeline) {
   const vstr = "draw_ob.js->generate_gpu_renderPipeline(" + what_pipeline + "): ";
   const PRINT_N = printer.my_printer(verbose, vstr);
@@ -69,20 +50,22 @@ function generate_individual_pipeline( device, module, verbose, what_pipeline) {
     layout: 'auto',  vertex: { module:module },
     fragment: { module, entryPoint: "fs",
                 targets: [{ format: presentationFormat }]}
-    //primitive: { cullMode: 'back' },
+    //primitive: { cullMode: 'back' }, // Used in 3D art for occlusion
     //depthStencil: {  depthWriteEnabled: true,
     // depthCompare: 'less', format: 'depth24plus' } 
   });
   PRINT_N(1,"-- pipeline was generated with createRenderPipeline -- all concluded.");
   return(individual_pipeline);
 }
-function createDepthTextureDesc(device, a_obwidget, what_depth_texture) {
+
+// createDepthTextureDesc()
+function createDepthTextureDesc(device, a_obwidget, what_depth_texture, verbose) {
   const vstr = "draw_ob.js->createDepthTextureDesc(" + what_depth_texture + "): ";
   const PRINT_N = printer.my_printer(verbose, vstr);
   PRINT_N(1, "-- we have called just initiated " + what_depth_texture);
   const colorTexture = a_obwidget.canvas_gpu.getCurrentTexture();
   const colorTextureView = colorTexture.createView();
-  console.log(InitT + "-- We created a color Texture.");
+  PRINT_N(1, "-- We created a color Texture.");
   gpu_renderPass_colorAttachment = {
     view: colorTextureView,
     clearValue: { r: .9, g: .9, b: .9, a: 1 },
