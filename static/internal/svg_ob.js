@@ -357,8 +357,10 @@ const add_svg_mouse_over = function(svg_div,svg_svg, text_svg, data, text_width,
           buy_price_bounds[0] = buy_range.new_range[0];  buy_price_bounds[1] = buy_range.new_range[1];
 
           blines = svg_svg.getElementById('line_buys_selected');
-          if ((blines===null) || (blines===undefined) || (!(blines))) {  blines = make_hline("line_buys_selected",-1,-1,-1,'blue',5); blines.setAttribute('z-level',4);
-                                                                       svg_svg.appendChild(blines); }
+          if ((blines===null) || (blines===undefined) || (!(blines))) {  
+            blines = make_hline("line_buys_selected",-1,-1,-1,'blue',5); blines.setAttribute('z-level',4);
+            svg_svg.appendChild(blines); 
+          }
           if (!(!(buy_range.ret)) && (buy_range.ret.length > 0)) {
             update_hline(data.buys,buy_range.ret, blines, data);
             tipText = tipText + "<br>Buys :["
@@ -374,9 +376,17 @@ const add_svg_mouse_over = function(svg_div,svg_svg, text_svg, data, text_width,
           sell_select = [...sell_range.ret];
           sell_price_bounds[0] = sell_range.new_range[0];  sell_price_bounds[1] = sell_range.new_range[1];
           slines = svg_svg.getElementById('line_sells_selected');
-          if ((slines===null) || (slines===undefined) || (!(slines))) {  slines = make_hline("line_sells_selected",-1,-1,-1,'red',5); slines.setAttribute('z-level',4);svg_svg.appendChild(slines); }
+          if ((slines===null) || (slines===undefined) || (!(slines))) {  
+            slines = make_hline("line_sells_selected",-1,-1,-1,'red',5); slines.setAttribute('z-level',4);svg_svg.appendChild(slines); 
+          }
           if (!(!(sell_range.ret)) && (sell_range.ret.length > 0)) {
             update_hline(data.sells,sell_range.ret, slines, data);
+            tipText = tipText + "<br>Sells :["
+            for (let ii = 0; ii < sell_range.ret.length; ii++) {
+              tipText = (tipText + "<br>  $" + data.sells.price[sell_range.ret[ii]] + "," + data.sells.qty[sell_range.ret[ii]] + "(" +  
+                 (pretty_num.string_del_tm(data.sells.open[sell_range.ret[ii]] / data.origmult, data.unit, data.st_time,true))  + "-" +
+                 (pretty_num.string_del_tm(data.sells.close[sell_range.ret[ii]] / data.origmult, data.unit, data.st_time,true))  + ")");
+            }
           } else { slines.setAttribute('d',''); }
         }
         if (!(!(data.trades))) {
@@ -433,7 +443,7 @@ const add_svg_mouse_over = function(svg_div,svg_svg, text_svg, data, text_width,
             ttip_txt.setAttribute('text-anchor', 'start');
           }
           ttip_txt.innerHTML = tts.join('\n')+'';
-          if ((tipText.length > 0) && (locY > 100)) { console.log("look at text?"); debugger;}
+          //if ((tipText.length > 0) && (locY > 100)) { console.log("look at text?"); debugger;}
         }
       }
    };

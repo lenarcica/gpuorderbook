@@ -660,6 +660,10 @@ class obwidget {
     //var format = { to: function(value) { return values_for_time_slider[Math.round(value)]; },
     //             from: function (value) { return values_for_time_slider.indexOf(Number(value)); }};
 
+    let process_del_tm = my_this.pretty_num.process_del_tm;
+    let string_del_tm = my_this.pretty_num.string_del_tm;
+    let clean_process_string0 = my_this.pretty_num.clean_process_string0;
+    let total_secs = my_this.pretty_num.total_secs;
     let format = { to: function(value) { return (value.toFixed(2)); },
                  from: function (value) { return Number(value).toFixed(2); }};
     
@@ -686,12 +690,16 @@ class obwidget {
     ];
     let CastStringNums = [my_this.pretty_num.process_del_tm(CurStringNums[0], my_this.data.unit, my_this.data.st_time),
           my_this.pretty_num.process_del_tm(CurStringNums[1], my_this.data.unit, my_this.data.st_time)];
+    // my_this.pretty_num.string_del_tm(CastStringNums[0], my_this.data.unit, my_this.data.st_time)
     if ((Math.abs(CastStringNums[0] - my_this.data.tmin) > .01) || 
         (Math.abs(CastStringNums[1] - my_this.data.tmax) > .01)) {
       console.log("ERROR inside obs.js->render_time_slider().  tmin/tmax = [" + this.data.tmin + "," + this.data.tmax + "], CurStringNums= " +
                   "[" + CurStringNums.join(",") + "], CastStringNums=[" +  CastStringNums[0] + "," + CastStringNums[1] + "]");
       console.log(" -- note keep_funcs = " + keep_funcs);
       console.log(" -- warning my_this.data.unit = " + my_this.data.unit + ", my_this.data.origmult = " + my_this.data.origmult);
+      console.log(" my_this.data.st_time = \"" + my_this.data.st_time + "\"");
+      console.log(" my_this.data.unit = " + my_this.data.unit);
+      console.log(" CurStringNums[0] = " + CurStringNums[0] + "; CurStringNums[1] = " + CurStringNums[1] + ";");
       debugger;
     }
  
