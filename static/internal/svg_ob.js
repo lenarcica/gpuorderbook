@@ -91,7 +91,7 @@ const binary_bottom = function(obs_tgt, srts, tgt_target) {
     let p_ip = obs_tgt[srts[ip]];
     if (p_ip >= tgt_target) { i1 = ip
     } else { i0 = ip }
-    if (i1-i0==1) { return(i1); }
+    if (i1-i0<=1) { break; }
   }
   return(i0);
 }
@@ -99,7 +99,7 @@ const binary_bottom = function(obs_tgt, srts, tgt_target) {
 const update_top = function(obs_tgt, srts, tgt_target, old_i) {
   if (obs_tgt.length <= 0) { return(-1); }
   if (obs_tgt.length <=1) { if (obs_tgt[0] <= tgt_target) { return(1); } else {return(-1); } }
-  if ((old_i === undefined) || (old_i < 0)) {
+  if ((old_i === undefined) || (old_i < 0) || (old_i === null)) {
    return(binary_top(obs_tgt, srts, tgt_target));
   }
   while ((old_i > 0) && (obs_tgt[srts[old_i]] > tgt_target )) {
@@ -118,25 +118,35 @@ const binary_top = function(obs_tgt, srts, tgt_target) {
   let i0 = 0; let i1 = obs_tgt.length-1;
   if (obs_tgt[srts[i0]] > tgt_target) { return(-1); }
   if (obs_tgt[srts[i1]] <= tgt_target) { return(i1+1); }
+  let ip = -1; let p_ip = 0.0;
   while(i0<i1) {
-    let ip = Math.floor((i0+i1)/2);
+    ip = Math.floor((i0+i1)/2);
     if (ip == i0) { ip = ip+1; }
-    let p_ip = obs_tgt[srts[ip]];
+    p_ip = obs_tgt[srts[ip]];
     if (p_ip > tgt_target) { i1 = ip
     } else { i0 = ip }
-    if (i1-i0==1) { return(i1); }
+    if (i1-i0<=1) { break; }
   }
-  return(i0);
+  return(i1);
 }
 // obs = data.buys; srts = srt_buys; on_time = 10; on_price = 22; price_delta=3; pastBounds = [-1,srt_buys.length];
 const get_obs_range = function(obs, srts, on_time, on_price, price_delta, pastBounds) {
   if ((obs === null) || (obs === undefined)) { return({new_range:[-1,-1],ret:[]}); }
   let new_range = [update_bottom(obs.price,srts, on_price-price_delta, pastBounds[0]),
                    update_top(obs.price,srts,on_price+price_delta,pastBounds[1])];
+
   if (new_range[1] === undefined) {
     console("get_obs_range: we had bounds [" + pastBounds[0] + "," + pastBounds[1] + "] but new_range[1] is undefined?");
     debugger;
     new_range[1] = obs.open.length; 
+  }
+  if ((new_range[1] < 0) || (new_range[1] >= obs.price.length)) {
+    if (obs[0] > on_price + price_delta) {
+      new_range[1] = 0;
+    } else {
+      console.log("get_obs_range, new_range[1] is bad returned as " +new_range[1] + " and that is out of bounds.");
+      debugger;
+    }
   }
   const ret = [];
   let up_range = new_range[1]; if (up_range == new_range[0]) { up_range = new_range[0] + 1; }
@@ -354,6 +364,11 @@ const add_svg_mouse_over = function(svg_div,svg_svg, text_svg, data, text_width,
         if (!(!(data.buys))) {
           const buy_range = get_obs_range(data.buys, srt_buys, orig_timeX, priceY, price_delta, buy_price_bounds);
           buy_select = [...buy_range.ret];
+          if (buy_select.length >= 10) {
+            console.log("CONCERNING -- Buy select, something is concerning, we have buy_select of length " + buy_select.length);
+            console.log("  breaking.");
+            debug;
+          }
           buy_price_bounds[0] = buy_range.new_range[0];  buy_price_bounds[1] = buy_range.new_range[1];
 
           blines = svg_svg.getElementById('line_buys_selected');
