@@ -366,7 +366,10 @@ class obwidget {
         debugger;
       }
       if (!(this_widget.data)) {
-        console.log("call_plot: data is not derived yet.");
+        console.log("call_plot: data is not derived yet."); return(-1);
+      }
+      if (!(is_numeric(this_widget.data.tmin))) {
+        console.log("call_plot: data.tmin is not numeric now. "); return(-1);
       }
       this_widget.gpu_pipeline = draw_ob.OB_generate_gpu_pipeline(this_widget.gpu_pipeline, this_widget.canvas_gpu,
         this_widget.adapter, this_widget.device, this_widget);
@@ -459,6 +462,9 @@ class obwidget {
      this.time_axis_svg.appendChild(path);
      this.time_axis_div.appendChild(this.time_axis_svg);   
      this.time_axis_div.old_tmin = this.data.tmin-1; this.time_axis_div.old_tmax = this.data.tmax+1;
+     if (!(is_numeric(this.time_axis_div.old_tmin))) {
+       console.log("add_time_axis_div: error old_tmin set to null."); 
+     }
   }
   redraw_time_axis() {
     if ((this.time_axis_div.old_tmin == this.data.tmin) &&  (this.time_axis_div.old_tmax == this.data.tmax)) { return(1); }
@@ -501,7 +507,11 @@ class obwidget {
     path2.setAttribute('fill','black'); path2.setAttribute('d', pathtext); path2.setAttribute('z-level',2);
     this.time_axis_svg.appendChild(path2);
  
-    const axtext = ("[u,om] = " + this.data.unit + "," + this.data.origmult + "[" + this.data.tmin + "," + this.data.tmax + "] or " +
+    //const axtext = ("[u,om] = {" + this.data.unit + "," + this.data.origmult + "}, [" + this.data.tmin + "," + this.data.tmax + "] or " +
+    //               pretty_num.string_del_tm( this.data.tmin, this.going.unit, this.going.st_time,true) + ' to ' +
+    //               pretty_num.string_del_tm( this.data.tmax, this.going.unit, this.going.st_time,true));
+
+    const axtext = ("" +
                    pretty_num.string_del_tm( this.data.tmin, this.going.unit, this.going.st_time,true) + ' to ' +
                    pretty_num.string_del_tm( this.data.tmax, this.going.unit, this.going.st_time,true));
     let axis_descriptor = document.getElementById('time_axis_descriptor');
@@ -637,7 +647,14 @@ class obwidget {
      }      
      if (try_min*this.data.origmult < this.orig.tmin) { try_min = this.orig.tmin/this.data.origmult }
      if (try_max*origmult > this.orig.tmax) { try_max = this.orig.tmax/this.data.origmult }
-
+     if (!(is_numeric(try_min))) {
+       console.log("render_unit_slider, we tried to construct try_min but got a non numeric. Look above.");  
+       debugger;
+     }
+     if (!(is_numeric(try_max))) {
+       console.log("render_unit_slider, we tried to construct try_max but got a non numeric. Look above.");  
+       debugger;
+     }
      this.going.tmin = try_min*1.0; this.going.tmax = try_max*1.0; this.going.unit = new_unit*1.0;  this.data.unit = new_unit*1.0;
      this.data.tmin = try_min*1.0; this.data.tmax = try_max*1.0;
      console.log("render_unit_slider we finish with origmult = " + origmult + " now ");
@@ -721,6 +738,11 @@ class obwidget {
       let lmbda_B = (on_unit, on_st_time) => (value) => {
         return(pretty_num.process_del_tm(value, on_unit, on_st_time)) };
       let lmbda_BB = lmbda_B(on_unit, on_st_time);
+      if (!(is_numeric(lmbda_BB(values[handle])))) {
+        console.log("ActHandle: definition, handle = " + handle + " but the lmbda_BB function does not return a numeric");
+        console.log(`  Waringing on_unit = {on_unit}, and on_st_time = {on_st_time}.`);
+        debugger;
+      }
       if (handle == 0) { my_this.data.tmin = lmbda_BB(values[handle]); my_this.model.set('tmin', my_this.data.tmin); }
       if (handle == 1) { my_this.data.tmax = lmbda_BB(values[handle]); my_this.model.set('tmax', my_this.data.tmax); }
       //console.log("set: we now have this.data.tmin/tmax = [" + this.data.tmin + ", " + this.data.tmax + "]");

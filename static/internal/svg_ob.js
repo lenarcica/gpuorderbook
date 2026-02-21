@@ -3,11 +3,19 @@
 //
 //
 
+// Unfortunately it appears that svg based objects need to be
+// reserved with "createElementNS(...)" which adds challenge and complication
+// to reserving SVG elements which can be located above the data in the image.
 const svgns = "http://www.w3.org/2000/svg";
 const pretty_num = require('../internal_lib/pretty_num');
 require('./tooltip.css');
 
-const make_svg_el=function(nm, locx,locy,widthx,heighty) {
+const printer = require("./printer.js");
+const is_numeric = printer.is_numeric; const is_positive_numeric = printer.is_numeric;
+
+// It appears we will have to make a number of svg and svg text elements and configure
+// some basic CSS attributes.
+const make_svg_el = function(nm, locx,locy,widthx,heighty) {
       let nvd = document.createElementNS(svgns, 'text'); nvd.setAttribute('id',nm);
       nvd.setAttribute('x', locx); 
       //nvd.setAttribute('x',Math.floor(locx - (txt.length * txtsize)*.25)); 
@@ -16,7 +24,7 @@ const make_svg_el=function(nm, locx,locy,widthx,heighty) {
       nvd.setAttribute('height', heightx + "px"); nvd.style.height = heighty + "px";
       return(nvd);
 }    
-const make_text_el=function(nm, locx,locy,txt, txtsize) {
+const make_text_el = function(nm, locx,locy,txt, txtsize) {
       let nvd = document.createElementNS(svgns, 'text'); nvd.setAttribute('id',nm);
       nvd.setAttribute('x', locx); 
       //nvd.setAttribute('x',Math.floor(locx - (txt.length * txtsize)*.25)); 
@@ -29,7 +37,17 @@ const make_text_el=function(nm, locx,locy,txt, txtsize) {
       return(nvd);
 }    
 const circle_rsize = 10;
-const current_nbbo_i= function(timeX, nbbo, pasti){
+
+// Binary searches in the data.
+
+
+// We will have to search Time series data, such as the NBBO table to find nearest
+// times matching to timeX
+//
+// Now, if our mouse is currently attached to a nearby time, linear search may be best
+// but if we have not located our mouse near the table in a while, a binary search operation can
+// be fastest.  The same will happen in searching buy and sells.
+const current_nbbo_i = function(timeX, nbbo, pasti) {
   if (nbbo.length <= 0) { return(-1); }
   if (nbbo.time[0] > timeX) { return(-1); }
   if (nbbo.time[nbbo.time.length-1] <= timeX) { return(nbbo.time.length-1) }
@@ -66,7 +84,7 @@ const binary_nbbo_i = function(timeX, nbbo) {
 const update_bottom = function(obs_tgt, srts, tgt_target, old_i) {
   if (obs_tgt.length <= 0) { return(-1); }
   if (obs_tgt.length <=1) { if (obs_tgt[0] >= tgt_target) { return(0); } else {return(-1); } }
-  if ((old_i === undefined) || (old_i < 0)) {
+  if ((old_i === undefined) || (old_i < 0) || (old_i >= srts.length)) {
    return(binary_bottom(obs_tgt, srts, tgt_target));
   }
   while ((old_i > 0) && (obs_tgt[srts[old_i]] >= tgt_target )) {
@@ -99,7 +117,7 @@ const binary_bottom = function(obs_tgt, srts, tgt_target) {
 const update_top = function(obs_tgt, srts, tgt_target, old_i) {
   if (obs_tgt.length <= 0) { return(-1); }
   if (obs_tgt.length <=1) { if (obs_tgt[0] <= tgt_target) { return(1); } else {return(-1); } }
-  if ((old_i === undefined) || (old_i < 0) || (old_i === null)) {
+  if ((old_i === undefined) || (old_i < 0) || (old_i === null) || (old_i >= srts.length)) {
    return(binary_top(obs_tgt, srts, tgt_target));
   }
   while ((old_i > 0) && (obs_tgt[srts[old_i]] > tgt_target )) {
@@ -130,22 +148,44 @@ const binary_top = function(obs_tgt, srts, tgt_target) {
   return(i1);
 }
 // obs = data.buys; srts = srt_buys; on_time = 10; on_price = 22; price_delta=3; pastBounds = [-1,srt_buys.length];
-const get_obs_range = function(obs, srts, on_time, on_price, price_delta, pastBounds) {
+const get_obs_range = function(obs, srts, on_time, on_price, price_delta, pastBounds, on_string) {
   if ((obs === null) || (obs === undefined)) { return({new_range:[-1,-1],ret:[]}); }
   let new_range = [update_bottom(obs.price,srts, on_price-price_delta, pastBounds[0]),
                    update_top(obs.price,srts,on_price+price_delta,pastBounds[1])];
 
-  if (new_range[1] === undefined) {
-    console("get_obs_range: we had bounds [" + pastBounds[0] + "," + pastBounds[1] + "] but new_range[1] is undefined?");
+  if ((new_range[1] === undefined) || (!is_numeric(new_range[1]))) {
+    console(`get_obs_range(${on_string}): we had bounds [${pastBounds[0]},${pastBounds[1]}] but new_range[1] is undefined?`);
     debugger;
     new_range[1] = obs.open.length; 
   }
+  if ((new_range[0] === undefined) || (!is_numeric(new_range[0]))) {
+    console(`get_obs_range(${on_string}): we had bounds [${pastBounds[0]},${pastBounds[1]}] but new_range[0] is undefined?`);
+    debugger;
+  }
   if ((new_range[1] < 0) || (new_range[1] >= obs.price.length)) {
-    if (obs[0] > on_price + price_delta) {
+    if (obs[srts[0]] > on_price + price_delta) {
       new_range[1] = 0;
+    } else if (new_range[1] == obs.price.length) {
+      if (obs.price[srts[obs.price.length -1]] <= on_price + price_delta) {
+      } else {
+        console.log(`get_obs_range(${on_string}). new_range[1] == ${new_range[1]} which is obs.price.length and still max obs is ` +
+          obs.price[srts[obs.price.length-1]]);
+      }
     } else {
-      console.log("get_obs_range, new_range[1] is bad returned as " +new_range[1] + " and that is out of bounds.");
+      console.log(`get_obs_range(${on_string}), new_range[1] is bad returned as ${new_range[1]} and that is out of bounds.`);
       debugger;
+    }
+  } 
+  if ((new_range[0] < 0) || (new_range[0] >= obs.price.length)) {
+    if (obs,price[srts[srts.length-1]] > on_price-price_delta) {
+      new_range[0] = srts.length -1;
+    } else if ((new_range[0] == obs.price.length) || (new_range[0] < 0)) {
+      if (obs.price[srts[0]] >= on_price - price_delta) {
+        new_range[0] = 0;
+      } else {
+        console.log(`get_obs_range(${on_string}). new_range[0] == ${new_range[0]} which is obs.price.length and still max obs is ` +
+          obs.price[srts[obs.price.length-1]]);
+      }
     }
   }
   const ret = [];
@@ -154,15 +194,21 @@ const get_obs_range = function(obs, srts, on_time, on_price, price_delta, pastBo
   for (let ii = new_range[0]; ii < up_range; ii++) {
     if ((obs.open[srts[ii]] <= on_time) && (obs.close[srts[ii]] >= on_time)) { ret.push(srts[ii]); }
   }
+  if (ret.length >= 100) {
+    console.log(`get_obs_range(${on_string}) -- we have ret of length ${ret.length}, I think needs more work`)
+    console.log(` -- on_price=${on_price}, price_delta=${price_delta} with range = [${new_range[0]},${new_range[1]}]`);
+    console.log(` -- we have obs[srts[new_range[0]=${new_range[0]}]] = ${obs.price[srts[new_range[0]]]}, obs[srts[new_range[1]=${new_range[1]}]]= ${obs.price[srts[new_range[1]]]}.`);
+    debugger;
+  }
   return({new_range:new_range, ret:ret});
 }
 
-const get_obs_range_trades = function(obs, srts, orig_timeX, priceY, price_delta, time_delta,past_bounds) {
+const get_obs_range_trades = function(obs, srts, orig_timeX, priceY, price_delta, time_delta,past_bounds, on_string) {
   if ((obs === null) || (obs === undefined)) { return({new_range:[-1,-1],ret:[]}); }
   let new_range = [update_bottom(obs.time,srts, orig_timeX-time_delta, past_bounds[0]),
                    update_top(obs.time,srts,orig_timeX+time_delta,past_bounds[1])];
   if (new_range[1] === undefined) {
-    console("get_obs_range: we had bounds [" + past_bounds[0] + "," + past_bounds[1] + "] but new_range[1] is undefined?");
+    console(`get_obs_range(${on_string}): we had bounds [${past_bounds[0]},${past_bounds[1]}] but new_range[1] is undefined?`);
     debugger;
     new_range[1] = obs.price.length; 
   }
@@ -362,12 +408,12 @@ const add_svg_mouse_over = function(svg_div,svg_svg, text_svg, data, text_width,
           }  
         }
         if (!(!(data.buys))) {
-          const buy_range = get_obs_range(data.buys, srt_buys, orig_timeX, priceY, price_delta, buy_price_bounds);
+          const buy_range = get_obs_range(data.buys, srt_buys, orig_timeX, priceY, price_delta, buy_price_bounds, "is_buy");
           buy_select = [...buy_range.ret];
-          if (buy_select.length >= 10) {
+          if (buy_select.length >= 100) {
             console.log("CONCERNING -- Buy select, something is concerning, we have buy_select of length " + buy_select.length);
             console.log("  breaking.");
-            debug;
+            debugger;
           }
           buy_price_bounds[0] = buy_range.new_range[0];  buy_price_bounds[1] = buy_range.new_range[1];
 
@@ -387,8 +433,13 @@ const add_svg_mouse_over = function(svg_div,svg_svg, text_svg, data, text_width,
           } else { blines.setAttribute('d',''); }
         }
         if (!(!(data.sells))) {
-          const sell_range = get_obs_range(data.sells, srt_sells, orig_timeX, priceY, price_delta, sell_price_bounds);
+          const sell_range = get_obs_range(data.sells, srt_sells, orig_timeX, priceY, price_delta, sell_price_bounds, "is_sell");
           sell_select = [...sell_range.ret];
+          if (sell_select.length >= 100) {
+            console.log("CONCERNING -- Sell select, something is concerning, we have sell_select of length " + sell_select.length);
+            console.log("  breaking.");
+            debugger;
+          }
           sell_price_bounds[0] = sell_range.new_range[0];  sell_price_bounds[1] = sell_range.new_range[1];
           slines = svg_svg.getElementById('line_sells_selected');
           if ((slines===null) || (slines===undefined) || (!(slines))) {  
@@ -406,7 +457,7 @@ const add_svg_mouse_over = function(svg_div,svg_svg, text_svg, data, text_width,
         }
         if (!(!(data.trades))) {
           const time_delta = (price_delta / (data.pmax-data.pmin)) * (data.tmax-data.tmin) * data.origmult;
-          const trade_range = get_obs_range_trades(data.trades, srt_trades, orig_timeX, priceY, price_delta, time_delta,trade_bounds); 
+          const trade_range = get_obs_range_trades(data.trades, srt_trades, orig_timeX, priceY, price_delta, time_delta,trade_bounds, "is_trades"); 
           trade_select = [...trade_range.ret];
           console.log(" On this selection, trade_range.ret has length " + trade_range.ret.length + " or [" + trade_range.ret.join(",") + "]");
           trade_bounds[0] = trade_range.new_range[0];  trade_bounds[1] = trade_range.new_range[1];

@@ -108,6 +108,7 @@ function OB_generate_gpu_pipeline(gpu_pipeline, gpu_context, adapter, device, a_
   const vstr = "draw_ob.js->OB_generate_gpu_pipeline(): ";
   const verbose = a_obwidget.verbose;
   const PRINT_N = printer.my_printer(verbose, vstr);
+  let update_uniform_int = 0;
   generate_gpu_renderPassDescriptor();
   if (!(device)) {
     PRINT_N(-1, "OB_generate_gpu_pipeline -- error device is null");
@@ -124,6 +125,12 @@ function OB_generate_gpu_pipeline(gpu_pipeline, gpu_context, adapter, device, a_
   }
   if (!(buffers.triangle_vert_buffer)) {
     PRINT_N(-1, "OB_generate_gpu_pipeline -- error, verts buffers was not generated.");
+  }
+  if (!(a_obwidget.data)) {
+    PRINT_N(-1, "ERROR: a_obwidget supplied data is NULL.");  debugger; return(-1);
+  }
+  if (!(is_numeric(a_obwidget.data.tmin))) {
+    PRINT_N(-1, "ERROR: tmin is not evaluated for a_obwidget."); debugger; return(-1);
   }
   if ( (!(gpu_pipeline))  || (!(gpu_pipeline.data_pipeline) )) {
     PRINT_N(1," OB_generate_gpu_pipleine initiate module generation");
@@ -158,14 +165,14 @@ function OB_generate_gpu_pipeline(gpu_pipeline, gpu_context, adapter, device, a_
     } else if (!is_numeric(a_obwidget.going.tmin)) {
       PRINT_N(-1, "ERROR OB_generate_gpu_pipeline, data does not contain tmin?"); debugger;
     }
-    update_uniform_window_device_buffer(device, a_obwidget.data, 0, gpu_pipeline)
+    update_uniform_int = update_uniform_window_device_buffer(device, a_obwidget.data, 0, gpu_pipeline)
     PRINT_N(1, "updating the vertex buffers");
     populate_device_verts_buffers(device, gpu_pipeline);
     PRINT_N(1, "update the device data buffers");
     populate_device_data_buffers(device, gpu_pipeline);
   } else {
     PRINT_N(1, " -- don't need to re-initiate, material is here.");
-    update_uniform_window_device_buffer(device, a_obwidget.data, 0, gpu_pipeline)
+    update_uniform_int = update_uniform_window_device_buffer(device, a_obwidget.data, 0, gpu_pipeline)
   }
   return(gpu_pipeline); 
 }
@@ -515,9 +522,13 @@ function update_uniform_bs01_device_buffer(device, bs01, gpu_pipeline) {
 }
 function update_uniform_window_device_buffer(device, data, bs01, gpu_pipeline) {
   PRINT_N(3, "update_uniform_window_device_buffer called");
-  if ((!(data)) || (!is_numeric(data.tmin))) {
-    PRINT_N(-1, "ERROR - update_uniform_window_device_buffer() error no data");
-    debugger;
+  if (!(data)) {
+    PRINT_N(-1, "ERROR - update_uniform_window_device_buffer() error no data.");
+    return(-1);
+  }
+  if (!is_numeric(data.tmin)) {
+    PRINT_N(-1, "ERROR - update_uniform_window_device_buffer() error no tmin data is invalid.");
+    return(-1);
   }
   if (!(buffers.uniform_buffer)) {
     PRINT_N(3, "update_uniform_window_device_buffer initiating new uniform_Values of size " + uniform_buffer_size);
@@ -529,6 +540,7 @@ function update_uniform_window_device_buffer(device, data, bs01, gpu_pipeline) {
       usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST});
   }
   device.queue.writeBuffer(gpu_pipeline.uniform_device_buffer, 0, buffers.uniform_buffer);
+  return(1);
 }
 function renew_uniform_buffer(data, gpu_pipeline, device) {
   buffers.uniform_buffer = new Float32Array( uniform_buffer_size );
