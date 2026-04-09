@@ -30,16 +30,16 @@ maintained as a full deployable solution.  It is recommended that readers implem
 - widget_src/widget_index.js -- Anywidget interface.  Calling ESBuild on this file builds an entire version of widget
 - static/internal : Functional code for the main javascript
 
-1. demo_data.js: simple example of a basic JSON format to power the orderbook viewer. (larger simulations demoed as well)
+ 1. demo_data.js: simple example of a basic JSON format to power the orderbook viewer. (larger simulations demoed as well)
 
-2. ob.js:  Main widget class, constructor of related buttons.
+ 2. ob.js:  Main widget class, constructor of related buttons.
 
-3. draw_ob.js: WebGPU code covering the canvas based elements.
+ 3. draw_ob.js: WebGPU code covering the canvas based elements.
 
-4. svg_ob.js: SVG code covering the forground selected SVG elements plotted on top of CANVAS
+ 4. svg_ob.js: SVG code covering the forground selected SVG elements plotted on top of CANVAS
    static/internal_lib/ : Self Written assistant libraries
 
-5. pretty_num.js : functions adapting techniques from R's "pretty()" functionality 
+ 5. pretty_num.js : functions adapting techniques from R's "pretty()" functionality 
       to try and identify human-intuitive break points amongst a sequence of 
       time and price stamps.
     Note, this is designed to scale based upon any default "Unit Time", which can be 
