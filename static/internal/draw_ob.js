@@ -550,9 +550,12 @@ function fill_uniform_buffer(data, gpu_pipeline, device) {
   if (!is_numeric(data.tmin)) {
     console.log("ERROR fill_uniform_buffer: tmin not populated"); debugger;
   }
+  // u0_tmin, u0_tmax, u0_pmin, u0_pmax
   buffers.uniform_buffer.set([data.tmin, data.tmax, data.pmin, data.pmax], 0);
+  // u0_height, u0_rat, u0_lwd_h, u0_rat
   buffers.uniform_buffer.set([data.height, (data.width/data.height), data.lwd_h, (data.height)/(data.width) * data.lwd_h], 4);
   //buffers.uniform_buffer.set([data.height, data.width, data.lwd_h, 1.0 * data.lwd_h], 4);
+  // min q, maxq, u0_tfrac,  tfrac2.
   buffers.uniform_buffer.set([0.0,data.max_qty,(2.0/data.origmult)/(data.tmax - data.tmin),2.0/(data.pmax-data.pmin)], 8); 
   buffers.uniform_buffer.set([data.pow_qty,data.tmin*data.origmult,data.trade_mul_fac,data.msg_mul_fac],12)
   if (!(gpu_pipeline)) {

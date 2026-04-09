@@ -14,6 +14,7 @@ function configureDebugButton(my_this) {
         console.log("obwidget->configureDebugButton  we have buttonDiv found");
         return(1);
       }
+      const draw_ob = my_this.draw_ob;
       my_this.buttonDiv = document.createElement('div');
       my_this.buttonDiv.setAttribute('id', "buttonDiv" + my_this.randomStr);
       my_this.buttonDiv.style.position = 'relative';  
@@ -59,8 +60,14 @@ function configureDebugButton(my_this) {
       my_this.blank_button.style.width = '150px';
       my_this.blank_button.setAttribute('left','200px');
       my_this.blank_button.innerHTML = 'Blank';
-      my_this.blank_button.addEventListener('click', (event) => { in_this=my_this; console.log("graphing:::blank_button clicked");  my_this.BlankWindow(); });
-      my_this.blank_button.addEventListener('onClick', (event) => { in_this=my_this;console.log("graphing:::blank_button clicked");  my_this.BlankWindow(); });
+      my_this.blank_button.addEventListener('click', (event) => { 
+         in_this=my_this; console.log("graphing:::blank_button clicked");  
+         my_this.BlankWindow();
+      });
+      my_this.blank_button.addEventListener('onClick', (event) => { 
+        in_this=my_this;console.log("graphing:::blank_button clicked");  
+        my_this.BlankWindow(); 
+      });
       my_this.buttonDiv.appendChild(my_this.blank_button);
 
       my_this.reset_button = document.createElement('button');
@@ -72,11 +79,21 @@ function configureDebugButton(my_this) {
       my_this.reset_button.setAttribute('value','Call to Generate Plot')
       my_this.reset_button.setAttribute('height','100px')
       my_this.reset_button.setAttribute('width', '200px')
-      my_this.reset_button.setAttribute('top', '0px');  my_this.debug_button.style.top = '0px'; my_this.debug_button.style.left = '400px';
+      my_this.reset_button.setAttribute('top', '0px');  
+      my_this.debug_button.style.top = '0px'; my_this.debug_button.style.left = '400px';
       my_this.reset_button.setAttribute('left','400px');
       my_this.reset_button.innerHTML = 'Reset TimeAxis';
-      my_this.reset_button.addEventListener('click', (event) => { in_this=my_this;console.log("graphing:::call_plot_button clicked"); my_this.call_plot();});
-      my_this.reset_button.addEventListener('onClick', (event) => { in_this=my_this;console.log("graphing:::call_plot_button clicked"); my_this.call_plot();});
+      my_this.reset_button.addEventListener('click', (event) => { 
+        in_this=my_this;
+        console.log("graphing:::reset_button::clicked:: calling plot."); 
+        my_this.call_plot();
+        console.log("graphing:::reset_button::clicked:: call_plot finished."); 
+      });
+      my_this.reset_button.addEventListener('onClick', (event) => { 
+        console.log("graphing::reset_button::clicked.  About to call_plot();");  
+        in_this=my_this;  my_this.call_plot();
+        console.log("graphing:::call_plot_button clicked.  call_lot was called");
+      });
       my_this.buttonDiv.appendChild(my_this.reset_button);
 }   
 

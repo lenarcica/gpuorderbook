@@ -163,7 +163,7 @@ const get_obs_range = function(obs, srts, on_time, on_price, price_delta, pastBo
     debugger;
   }
   if ((new_range[1] < 0) || (new_range[1] >= obs.price.length)) {
-    if (obs[srts[0]] > on_price + price_delta) {
+    if (obs.price[srts[0]] > on_price + price_delta) {
       new_range[1] = 0;
     } else if (new_range[1] == obs.price.length) {
       if (obs.price[srts[obs.price.length -1]] <= on_price + price_delta) {
@@ -171,14 +171,17 @@ const get_obs_range = function(obs, srts, on_time, on_price, price_delta, pastBo
         console.log(`get_obs_range(${on_string}). new_range[1] == ${new_range[1]} which is obs.price.length and still max obs is ` +
           obs.price[srts[obs.price.length-1]]);
       }
+    } else if (obs.price[srts[0]] > on_price+price_delta) {
+      
     } else {
       console.log(`get_obs_range(${on_string}), new_range[1] is bad returned as ${new_range[1]} and that is out of bounds.`);
       debugger;
     }
   } 
   if ((new_range[0] < 0) || (new_range[0] >= obs.price.length)) {
-    if (obs,price[srts[srts.length-1]] > on_price-price_delta) {
-      new_range[0] = srts.length -1;
+    if (obs.price[srts[srts.length-1]] > on_price-price_delta) {
+      new_range[0] = -1; 
+    } else if (obs.price[srts[obs.price.length-1]] < on_price - price_delta) {
     } else if ((new_range[0] == obs.price.length) || (new_range[0] < 0)) {
       if (obs.price[srts[0]] >= on_price - price_delta) {
         new_range[0] = 0;
@@ -188,7 +191,10 @@ const get_obs_range = function(obs, srts, on_time, on_price, price_delta, pastBo
       }
     }
   }
-  const ret = [];
+  if (((new_range[0] < 0) || (new_range[0] >= obs.price.length)) && ((new_range[1] < 0) || (new_range[1] >= obs.price.length)) ) {
+    return({new_range:new_range, ret:[]});
+  }
+  let ret = [];
   let up_range = new_range[1]; if (up_range == new_range[0]) { up_range = new_range[0] + 1; }
   if (up_range > obs.open.length) { up_range = obs.open.length; }
   for (let ii = new_range[0]; ii < up_range; ii++) {
@@ -211,6 +217,13 @@ const get_obs_range_trades = function(obs, srts, orig_timeX, priceY, price_delta
     console(`get_obs_range(${on_string}): we had bounds [${past_bounds[0]},${past_bounds[1]}] but new_range[1] is undefined?`);
     debugger;
     new_range[1] = obs.price.length; 
+  }
+  if (new_range[0] === undefined) {
+    console(`get_obs_range(${on_string}): we had bounds [${past_bounds[0]},${past_bounds[1]}] but new_range[0] is undefined?`);
+    debugger;
+  }
+  if ((new_range[0] < 0) && (new_range[1] < 0)) {
+    return({new_range:new_range, ret:[]});
   }
   const ret = [];
   let up_range = new_range[1]; if (up_range == new_range[0]) { up_range = new_range[0] + 1; }

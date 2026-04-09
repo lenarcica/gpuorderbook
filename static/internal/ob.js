@@ -8,7 +8,9 @@
 //   Uses: "draw_ob.js" -- WebGPU Canvas code (Static pixels)
 //         "svg_ob.js" -- Interactive SVG on top (selectable pixels)
 //
-//         
+//   Defines an obwidget class which contains information necessary for plotting a subset of timeseries orderbook with NBBO and trades.
+//   The goal of this widget is to be performant at plotting 100s of thousands of individual orders and allowing viewers to
+//   Zoom in to other scales.
 //
 //import noUiSlider from '../external/nouislider.js';
 var noUiSlider = require("../external/nouislider.js"); // This external slider is a requirement
@@ -25,6 +27,10 @@ const make_text_el = svg_ob.make_text_el;
 const pretty_num = require("../internal_lib/pretty_num.js");
 const svgns = "http://www.w3.org/2000/svg"; // SVG Namespace
 
+const compare_two_unit_num = pretty_num.compare_two_unit_num;
+const recast_unit = pretty_num.recast_unit;
+const string_del_tm = pretty_num.string_del_tm;
+const process_del_tm = pretty_num.process_del_tm;
 const default_height = 500;  const default_width = 600;
 var canvas_pixels = 10; var height_canvas = default_height; var width_canvas = default_width;
 var canvas_tweak = 0; // Incase extra tweak to put CANVAS on SVG necessary
@@ -277,7 +283,7 @@ class obwidget {
   BlankWindow() {
        console.log("gpuwidget.js->BlankWindow() we have executed.");
        // canvas_gpu is the context
-       draw_ob.blank_main(this.canvas_gpu, this.device);
+       this.draw_ob.blank_main(this.canvas_gpu, this.device);
   }
   async render(properties) {
     const PRINT_N = this.PRINT_N;
@@ -355,7 +361,7 @@ class obwidget {
     const verbose = this.verbose;
     if (!(!(this.gpu_pipeline))) {
       PRINT_N(5, "this.call_plot() -- refilling uniform buffer.");
-      draw_ob.fill_uniform_buffer(this.data, this.gpu_pipeline, this.gpu_pipeline.device)
+      this.draw_ob.fill_uniform_buffer(this.data, this.gpu_pipeline, this.gpu_pipeline.device)
       PRINT_N(5, "this.call_plot(): uniforms now [" + this.gpu_pipeline.buffers.uniform_buffer.join(",") + "]");
     }
     const frameFunction = (this_widget, draw_ob) => ({inputs}) => {
@@ -371,10 +377,10 @@ class obwidget {
       if (!(is_numeric(this_widget.data.tmin))) {
         console.log("call_plot: data.tmin is not numeric now. "); return(-1);
       }
-      this_widget.gpu_pipeline = draw_ob.OB_generate_gpu_pipeline(this_widget.gpu_pipeline, this_widget.canvas_gpu,
+      this_widget.gpu_pipeline = this.draw_ob.OB_generate_gpu_pipeline(this_widget.gpu_pipeline, this_widget.canvas_gpu,
         this_widget.adapter, this_widget.device, this_widget);
       PRINT_N(5, "call_plot() -- ob_pu_render to be called.");
-      draw_ob.ob_gpu_render(this_widget.gpu_pipeline);
+      this.draw_ob.ob_gpu_render(this_widget.gpu_pipeline);
     }
     let frameCallback = frameFunction(here_this, draw_ob);
     PRINT_N(5, "call_plot() -- about to trigger requestAnimationFrame");
@@ -466,9 +472,30 @@ class obwidget {
        console.log("add_time_axis_div: error old_tmin set to null."); 
      }
   }
+  serve_times() {
+    const u_tmin = this.draw_ob.buffers.uniform_buffer[0];
+    const u0_tfrac = this.draw_ob.buffers.uniform_buffer[10];
+    const u_tcmin = this.draw_ob.buffers.uniform_buffer[13];
+    const rt = {'tmin': this.data.tmin, 'tmax':this.data.tmax, 'origmult':this.data.origmult,
+                'unit': this.data.unit, 'st_time':this.data.st_time, 
+                'st_tmin': pretty_num.string_del_tm(this.data.tmin, this.data.unit, 
+                       this.data.st_time, true),
+                'st_tmax': pretty_num.string_del_tm(this.data.tmax, this.data.unit, 
+                       this.data.st_time, true),
+                'u_tmin': u_tmin,
+                'u_tmax': this.draw_ob.buffers.uniform_buffer[1],
+                'u_tcmin': u_tcmin, 
+                'u0_tfrac': u0_tfrac, 
+                'u_2omult': this.draw_ob.buffers.uniform_buffer[11],
+                'loc_tmin': u0_tfrac*(u_tmin*this.data.origmult -u_tcmin) - 1
+    };
+    return(rt);
+  }
   redraw_time_axis() {
-    if ((this.time_axis_div.old_tmin == this.data.tmin) &&  (this.time_axis_div.old_tmax == this.data.tmax)) { return(1); }
-    this.time_axis_div.old_tmin = this.data.tmin; this.time_axis_div.old_tmax = this.data.tmax;
+    if ((this.time_axis_div.old_tmin == this.data.tmin) &&  
+        (this.time_axis_div.old_tmax == this.data.tmax)) { return(1); }
+    this.time_axis_div.old_tmin = this.data.tmin; 
+    this.time_axis_div.old_tmax = this.data.tmax;
     const hline_y = Math.floor(this.margins.bottom * hline_effect);
     //const svgIdnode = document.getElementById(this.time_axis_svg.id);
     //const myNode = document.getElementById("foo");
@@ -514,6 +541,24 @@ class obwidget {
     const axtext = ("" +
                    pretty_num.string_del_tm( this.data.tmin, this.going.unit, this.going.st_time,true) + ' to ' +
                    pretty_num.string_del_tm( this.data.tmax, this.going.unit, this.going.st_time,true));
+    let uncast_str = [pretty_num.string_del_tm( this.data.tmin, this.going.unit, this.going.st_time, true),
+              pretty_num.string_del_tm( this.data.tmax, this.going.unit, this.going.st_time, true) ]
+    let uncast =  [pretty_num.process_del_tm( uncast_str[0], this.orig.unit, this.orig.st_time),
+                   pretty_num.process_del_tm( uncast_str[1], this.orig.unit, this.orig.st_time) ];
+    if (uncast[0] < this.orig.tmin -.02) {
+      console.log("Issue: uncast[0] = " + uncast[0] + " for " + uncast_str[0] + 
+                  " but this.orig.tmin=" + this.orig.tmin + 
+                  " for " + pretty_num.string_del_tm(this.orig.tmin, this.orig.unit, 
+                                                     this.orig.st_time,true) 
+                  + ".");
+      debugger;
+    }
+    if (uncast[1] > this.orig.tmax + .02) {
+      console.log("Issue: uncast[1] = " + uncast[1] + " for " + uncast_str[1] + " but this.orig.tmax=" + this.orig.tmax + 
+                  " for " + pretty_num.string_del_tm(this.orig.tmax, this.orig.unit, this.orig.st_time,true) + ".");
+      debugger;
+    }
+
     let axis_descriptor = document.getElementById('time_axis_descriptor');
     if ((axis_descriptor == null) || (axis_descriptor == undefined) || (!(axis_descriptor))) {
       this.time_axis_svg.appendChild(make_text_el('time_axis_descriptor',this.data.width*.5, this.margins.bottom*.35,
@@ -605,7 +650,9 @@ class obwidget {
     } ;
     unit_format = null;
     const values_for_time_slider = [5,4,3,2,1,0,-1,-2,-3,-4,-5,-6,-7,-8,-9];
-    const values_inside = values_for_time_slider.filter((x)=>{ return((x <= this.orig.unit) && (x >= this.orig.unit-3)); });
+    const values_inside = values_for_time_slider.filter((x)=>{ 
+      return((x <= this.orig.unit) && (x >= this.orig.unit-3)); 
+    });
     unit_format = {
       to: function(value) { return ('10<sup>' + ('' + values_inside[Math.round(value)]) + '</sup>'); },
       from: function (value) { 
@@ -622,7 +669,8 @@ class obwidget {
     });
     this.unit_slider_div.noUiSlider.set( this.orig.unit);
     this.unit_slider_div.noUiSlider.on('set', (values, handle) => {
-     console.log('slider has called itself: new unit will be values[0] =' + values[0] + " from current = " + this.going.unit);
+     console.log('slider has called itself: new unit will be values[0] =' + 
+                    values[0] + " from current = " + this.going.unit);
      let new_unit = unit_format.from(values[0]) * 1.0;  if (Number.isNaN(new_unit)) { new_unit = 0; }
 
      const old_unit = this.going.unit * 1.0;
@@ -632,7 +680,8 @@ class obwidget {
 
      this.data.origmult = origmult * 1.0; // unitx = -2                 ; orig.unit = 0
                                     // tm_unitx = 100.0;          ; tm_orig = 1.0
-     let try_min = this.orig.tmin;  let try_max = this.orig.tmax;  let cpt; let onwid = this.data.tmax-this.data.tmin;
+     let try_min = this.orig.tmin;  let try_max = this.orig.tmax;  
+     let cpt; let onwid = this.data.tmax-this.data.tmin;
      if (new_unit > old_unit) {
        try_min = (this.going.tmin - (relmult-1) * (this.going.tmax-this.going.tmin)) / relmult;
        try_max= (this.going.tmax + (relmult-1) * (this.going.tmax-this.going.tmin)) / relmult;
@@ -645,8 +694,14 @@ class obwidget {
           try_max = (cpt + onwid * relmult * 2);
        }
      }      
-     if (try_min*this.data.origmult < this.orig.tmin) { try_min = this.orig.tmin/this.data.origmult }
-     if (try_max*origmult > this.orig.tmax) { try_max = this.orig.tmax/this.data.origmult }
+     if (compare_two_unit_num( this.orig.tmin, this.orig.unit, try_min, new_unit, this.orig.st_time) > 0) {
+       try_min = pretty_num.recast_unit(this.orig.tmin, this.orig.unit, new_unit, this.orig.st_time);
+     }
+     if (compare_two_unit_num( this.orig.tmax, this.orig.unit, try_max, new_unit, this.orig.st_time) < 0) {
+       try_max = pretty_num.recast_unit(this.orig.tmax, this.orig.unit, new_unit, this.orig.st_time);
+     }
+     //if (try_min*this.data.origmult < this.orig.tmin) { try_min = this.orig.tmin/this.data.origmult }
+     //if (try_max*origmult > this.orig.tmax) { try_max = this.orig.tmax/this.data.origmult }
      if (!(is_numeric(try_min))) {
        console.log("render_unit_slider, we tried to construct try_min but got a non numeric. Look above.");  
        debugger;
@@ -655,11 +710,29 @@ class obwidget {
        console.log("render_unit_slider, we tried to construct try_max but got a non numeric. Look above.");  
        debugger;
      }
-     this.going.tmin = try_min*1.0; this.going.tmax = try_max*1.0; this.going.unit = new_unit*1.0;  this.data.unit = new_unit*1.0;
+     this.going.tmin = try_min*1.0; this.going.tmax = try_max*1.0; 
+     this.going.unit = new_unit*1.0;  this.data.unit = new_unit*1.0;
      this.data.tmin = try_min*1.0; this.data.tmax = try_max*1.0;
      console.log("render_unit_slider we finish with origmult = " + origmult + " now ");
-     if (this.going.unit == this.orig.unit) {  this.going.tmax = this.orig.tmax*1.0;  this.going.tmin = this.orig.tmin*1.0; this.data.tmax=this.orig.tmax*1.0; this.data.tmin = this.orig.tmin*1.0}
-     this.render_time_slider(); return;
+     if (this.going.unit == this.orig.unit) {  this.going.tmax = this.orig.tmax*1.0;  
+       this.going.tmin = this.orig.tmin*1.0; 
+       this.data.tmax=this.orig.tmax*1.0; this.data.tmin = this.orig.tmin*1.0;
+     } 
+     this.draw_ob.fill_uniform_buffer(this.data, this.gpu_pipeline, this.gpu_pipeline.device)
+     this.render_time_slider(); 
+     this.draw_ob.renew_uniform_buffer(this.data, this.gpu_pipeline, this.gpu_pipeline.device)
+     if (old_unit < new_unit) {
+       //this.draw_ob.ob_gpu_render(this.gpu_pipeline);
+       this.call_plot();
+       //console.log("ob.js (on) Old unit < new unit.  call_plot() had been called.  Now, what is condition?");
+       //debugger; 
+       this.BlankWindow();
+       this.draw_ob.ob_gpu_render(this.gpu_pipeline);
+       //console.log("ob.js (on) we tried to gpu render.");
+       //debugger;
+     }
+     //console.log("ob.js (on)  we continue where next?");
+     return;
     });
   }
   render_time_slider() {
@@ -688,7 +761,7 @@ class obwidget {
       pretty_num.string_del_tm(value,on_unit, on_st_time,true)
     ); }
     function_A = function_A(on_unit, on_st_time);
-    let function_B = (on_init, on_st_time) => (value)=> { return(
+    let function_B = (on_unit, on_st_time) => (value)=> { return(
      pretty_num.process_del_tm(value, on_unit, on_st_time)
      );  
     }
@@ -778,8 +851,10 @@ class obwidget {
     }
     noUiSlider.create(this.price_slider_Div, {  start: [on_pmin, on_pmax],
        // A linear range from 0 to 15 (16 values)
-       range: price_range_dict, step: .25, connect: true, margin:.25,orientation: 'vertical', height:this.data.height,direction:'rtl',
-       tooltips: true, format: format, pips: { mode: 'positions', format: format, values:[0,20,40,60,80,100],density:10 },
+       range: price_range_dict, step: .25, connect: true, 
+       margin:.25,orientation: 'vertical', height:this.data.height,direction:'rtl',
+       tooltips: true, format: format, 
+       pips: { mode: 'positions', format: format, values:[0,20,40,60,80,100],density:10 },
     });
     this.price_slider_Div.noUiSlider.set([on_pmin, on_pmax]); 
 
@@ -795,18 +870,19 @@ class obwidget {
    
   }
   async get_uniform_device_buffer() {
-    return(await draw_ob.get_device_buffer(this.gpu_pipeline, this.gpu_pipeline.uniform_device_buffer));
+    return(await this.draw_ob.get_device_buffer(this.gpu_pipeline, this.gpu_pipeline.uniform_device_buffer));
   }
   async get_nbbo_vert_device_buffer() {
-    return(await draw_ob.get_device_buffer(this.gpu_pipeline, this.gpu_pipeline.nbbo_vert_device_buffer));
+    return(await this.draw_ob.get_device_buffer(this.gpu_pipeline, this.gpu_pipeline.nbbo_vert_device_buffer));
   }
   async get_device_nbbo_buffers_time() {
-    return(await draw_ob.get_device_buffer(this.gpu_pipeline, this.gpu_pipeline.device_nbbo_buffers.time));
+    return(await this.draw_ob.get_device_buffer(this.gpu_pipeline, this.gpu_pipeline.device_nbbo_buffers.time));
   }
   create_mouse_svg() {
    const mouse_text_height = Math.floor( (1.0/3.0) * this.margins.top);
    const mouse_text_width = Math.floor(.7 * this.data.width);
-   this.mouse_text_div = this.add_me_widget_div('mouse_text_div',this.widgetDiv,'absolute','0', Math.floor(this.margins.top-mouse_text_height), 
+   this.mouse_text_div = this.add_me_widget_div('mouse_text_div',
+      this.widgetDiv,'absolute','0', Math.floor(this.margins.top-mouse_text_height), 
       Math.floor( this.margins.left +  (this.data.width-mouse_text_width)), mouse_text_height, (mouse_text_width));
    this.widgetDiv.appendChild(this.mouse_text_div);
    let nsvg = document.createElementNS(this.svgns,'svg');  
@@ -819,18 +895,26 @@ class obwidget {
    nsvg.setAttribute('z-level',2);
    this.mouse_text_div.mouse_text_svg = nsvg;  this.mouse_text_div.appendChild(nsvg);
    const my_this = this; 
-   let ttip_div = document.createElement('div'); ttip_div.setAttribute('id','ttip_div'); ttip_div.setAttribute('title','Selected');
+   let ttip_div = document.createElement('div'); 
+   ttip_div.setAttribute('id','ttip_div'); ttip_div.setAttribute('title','Selected');
    const ttip_width_height = [Math.floor(this.data.width*.5), Math.floor(this.data.height*.5)];
-   ttip_div.style = "position: absolute; visibility: hidden; background-color: white; border: 1px solid black; padding: 5px";
+   ttip_div.style = "position: absolute; visibility: hidden; background-color: white; " + 
+                    "border: 1px solid black; padding: 5px";
    ttip_div.setAttribute('position','absolute'); //ttip_div.setAttribute('class','tooltip');
-   ttip_div.setAttribute('background-color', '#333');  ttip_div.setAttribute('color','#fff');  ttip_div.setAttribute('padding','8px');
-   ttip_div.setAttribute('border-radius','4px');  ttip_div.setAttribute('z-level',1000);  ttip_div.setAttribute('opacity',1);
-   ttip_div.setAttribute('z-index',1000); ttip_div.style.position = 'absolute'; ttip_div.setAttribute('left', this.margins.left);  ttip_div.setAttribute('bottom',this.margins.top); 
-   ttip_div.setAttribute('transition', 'opacity 0.3s ease-in-out');   ttip_div.style.height = Math.floor(this.data.height*.5); ttip_div.style_width = Math.floor(this.data.width * .5);
-   ttip_div.setAttribute('width', ttip_width_height[0] + "px");  ttip_div.setAttribute('height',ttip_width_height[0] + "px");
+   ttip_div.setAttribute('background-color', '#333');  
+   ttip_div.setAttribute('color','#fff');  ttip_div.setAttribute('padding','8px');
+   ttip_div.setAttribute('border-radius','4px');  
+   ttip_div.setAttribute('z-level',1000);  ttip_div.setAttribute('opacity',1);
+   ttip_div.setAttribute('z-index',1000); ttip_div.style.position = 'absolute'; 
+   ttip_div.setAttribute('left', this.margins.left);  ttip_div.setAttribute('bottom',this.margins.top); 
+   ttip_div.setAttribute('transition', 'opacity 0.3s ease-in-out'); 
+   ttip_div.style.height = Math.floor(this.data.height*.5); ttip_div.style_width = Math.floor(this.data.width * .5);
+   ttip_div.setAttribute('width', ttip_width_height[0] + "px");  
+   ttip_div.setAttribute('height',ttip_width_height[0] + "px");
    ttip_div.style.width = ttip_width_height[0] + "px"; ttip_div.style.height = ttip_width_height[1] + "px";
    //ttip_div.setAttribute('class','ob_tooltip');
-   let ttip_svg = document.createElementNS(this.svgns,'svg'); ttip_svg.setAttribute('id','ttip_svg'); ttip_svg.setAttribute('title','ttip_svg'); ttip_svg.setAttribute('name','ttip_svg');
+   let ttip_svg = document.createElementNS(this.svgns,'svg'); ttip_svg.setAttribute('id','ttip_svg'); 
+   ttip_svg.setAttribute('title','ttip_svg'); ttip_svg.setAttribute('name','ttip_svg');
    ttip_svg.setAttribute('width',ttip_width_height[0] + 'px'); ttip_svg.setAttribute('height',ttip_width_height[1] + 'px');
    ttip_svg.style.height = ttip_width_height[1] + 'px'; ttip_svg.style.width= ttip_width_height[0] + 'px';
    //let ttip_path = document.createElementNS(this.svgns,'path');  ttip_path.setAttribute('id','ttip_path');
@@ -861,7 +945,8 @@ class obwidget {
       this.model.set('mouse_x', event.clientX);
       this.model.set('mouse_y', event.clientY);
       this.model.save_changes();
-      this.PRINT_N(1, "gpuwidget.el.eventListener('click') -- end click at (X,Y)=(" + event.clientX + ", " + event.clientY + ")");
+      this.PRINT_N(1, "gpuwidget.el.eventListener('click') -- end click at (X,Y)=(" + 
+        event.clientX + ", " + event.clientY + ")");
       } else {
         this.PRINT_N(1, "el.addEventListner -- hey: clicked but target is not canvas.");
       }
