@@ -50,12 +50,33 @@ async function WebGPU_GetAdapterAndDevice() {
   return({device:device,adapter:adapter});
 }
 
+function resort_dside(dside) {
+  let stindex_pt = [...dside.iprice.keys()].sort((ix,iy)=>{ return(dside.iprice[ix] < dside.iprice[iy] ? -1 :
+       (dside.iprice[ix] > dside.iprice[iy] ? 1 :
+        (dside.open[ix] < dside.open[iy] ? -1 :
+         (dside.open[ix] > dside.open[iy] ? 1 :
+          (dside.close[ix] < dside.close[iy] ? -1 : 1))))) });
+  dside.price =  stindex_pt.map((ix)=>dside.price[ix]);
+  dside.iprice =  stindex_pt.map((ix)=>dside.iprice[ix]);
+  dside.qty =  stindex_pt.map((ix)=>dside.qty[ix]);
+  dside.open =  stindex_pt.map((ix)=>dside.open[ix]);
+  dside.close =  stindex_pt.map((ix)=>dside.close[ix]);
+
+
+  dside.stindex_tp = [...dside.iprice.keys()].sort((ix,iy)=>{ return(dside.open[ix] < dside.open[iy] ? -1 :
+       (dside.open[ix] > dside.open[iy] ? 1 :
+        (dside.iprice[ix] < dside.iprice[iy] ? -1 :
+         (dside.iprice[ix] > dside.iprce[iy] ? 1 :
+          (dside.close[ix] < dside.close[iy] ? -1 : 1))))) });
+}
+
 //export class obwidget {
 class obwidget {
   data = {...demo_data.demo_data};
   gpu_pipeline = null;
   renderer = null; device=null; adapter=null;
   count_renders = 0; draw_ob = draw_ob; svgns = svgns; svg_ob = svg_ob; pretty_num = pretty_num; time_range_dict = [0,1];
+  unique_prices = [];
   constructor({model, el}) {
     this.randomStr = (Math.random().toString(36).substring(2, 5) +
           Math.random().toString(36).substring(2, 5));
@@ -125,6 +146,13 @@ class obwidget {
     if (!is_numeric(this.orig.tmin)) {
       PRINT_N(-1, "ERROR configureData, this.orig.tmin somehow not configured."); debugger;
     }
+    this.unique_prices = [...new Set([...this.data.buys.price,...this.data.sells.price])].sort();
+    this.data.buys.iprice = this.data.buys.price.map((x)=>this.unique_prices.indexOf(x));
+    this.data.sells.iprice = this.data.sells.price.map((x)=>this.unique_prices.indexOf(x));
+
+    resort_dside(this.data.buys); resort_dside(this.data.sells);
+    // unique_prices = [100,200,400,500];  MyMap = [500,400,400,100,200];
+    // MyMap.map((x)=>unique_prices.indexOf(x));
     PRINT_N(1,"configureData, this.data.height is " + this.data.height);
   }
   async createRenderer(props) {
