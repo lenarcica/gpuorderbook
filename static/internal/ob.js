@@ -51,6 +51,10 @@ async function WebGPU_GetAdapterAndDevice() {
 }
 
 function resort_dside(dside) {
+  if (!(dside)) {
+    console.log("ERROR resort_dside: dside is undefined currently.");
+    return;
+  }
   let stindex_pt = [...dside.iprice.keys()].sort((ix,iy)=>{ return(dside.iprice[ix] < dside.iprice[iy] ? -1 :
        (dside.iprice[ix] > dside.iprice[iy] ? 1 :
         (dside.open[ix] < dside.open[iy] ? -1 :
@@ -66,7 +70,7 @@ function resort_dside(dside) {
   dside.stindex_tp = [...dside.iprice.keys()].sort((ix,iy)=>{ return(dside.open[ix] < dside.open[iy] ? -1 :
        (dside.open[ix] > dside.open[iy] ? 1 :
         (dside.iprice[ix] < dside.iprice[iy] ? -1 :
-         (dside.iprice[ix] > dside.iprce[iy] ? 1 :
+         (dside.iprice[ix] > dside.iprice[iy] ? 1 :
           (dside.close[ix] < dside.close[iy] ? -1 : 1))))) });
 }
 
@@ -150,7 +154,8 @@ class obwidget {
     this.data.buys.iprice = this.data.buys.price.map((x)=>this.unique_prices.indexOf(x));
     this.data.sells.iprice = this.data.sells.price.map((x)=>this.unique_prices.indexOf(x));
 
-    resort_dside(this.data.buys); resort_dside(this.data.sells);
+    // Done resort yet
+    //resort_dside(this.data.buys); resort_dside(this.data.sells);
     // unique_prices = [100,200,400,500];  MyMap = [500,400,400,100,200];
     // MyMap.map((x)=>unique_prices.indexOf(x));
     PRINT_N(1,"configureData, this.data.height is " + this.data.height);
