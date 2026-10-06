@@ -1,8 +1,13 @@
 # gpuorderbook -- A Test package for 2D GPU powered orderbook timeline 
  - Alan Lenarcic, study project
- - Version .01 (2025-10-10)
+ - Original Version .01 (2025-10-10)
+ - Current Version: .02 (2026-10-06) [introduce orderbook calculator]
 
 #  A demonstration study of 2D Web GPU graphics feeding off of jupyter source data.
+  - Web GPU graphics
+  - Calculation of NBBO and orderbook depth
+  - SVG overlay and tooltips
+  - Time slice calculation
 
 # LICENSE GNU 2.0 (GNU General Public License, version 2)
  This is open source code for demonstration of certain performance characteristics and is not being
