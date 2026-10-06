@@ -87,23 +87,37 @@ function pretty_num(low, high, n, include10) {
 //   Or "10 minutes" or "Hour" units have different properties.
 const process_tm = function(on_time, unit) {
   if (on_time.length == 0) { return(0); }
-  let splitp = on_time.split(".");
-  let decimal = '';  if (splitp.length >= 2) { decimal =  splitp[2]; }
-  let pos = splitp[0].split(":");
-  if ((pos.length == 0) && (decimal.length == 0)) { return(0); }
-  let aboveZero = total_secs(splitp[0]);
-  if (unit == 0) { return(aboveZero + Number('0.' + decimal)); }
-
-  if (unit == 1) { return( (aboveZero/10) + Number('0.0' + decimal)); }
-  if (unit == 2) { return( (aboveZero/60) + Number('0.'+decmimal)/60 ) } 
-  if (unit == 3) { return( (aboveZero/600) + Number('0.'+decmimal)/600 ) } 
-  if (unit == 4) { return( (aboveZero/(60*60)) + Number('0.'+decmimal)/(60*60) ) } 
-  if (unit == 5) { return( (aboveZero/(600*60)) + Number('0.' + decimal)/(600*60) ) }
+  let splitp = ''; let decimal_str = ''; let pos = ['','','']; let aboveZero = 0; let rtt= 0;
+  splitp = on_time.split(".");
+  decimal_str = '';  if (splitp.length >= 2) { decimal_str =  splitp[1]; }
+  pos = splitp[0].split(":");
+  aboveZero = (pos.length == 0) ? 0 : total_secs(splitp[0]);
+  rtt = ( (unit == 0) ?  (aboveZero + Number('0.' + decimal_str)) :
+          (unit == 1) ?  (aboveZero/10 + Number('0.0' + decimal_str)) :
+          (unit == 2) ?  (aboveZero/60 + Number('0.' + decimal_str)/60) :
+          (unit == 3) ?  (aboveZero/600 + Number('0.' + decimal_str)/600) :
+          (unit == 4) ?  (aboveZero/3600 + Number('0.' + decimal_str)/3600) :
+          (unit == 5) ?  (aboveZero/36000 + Number('0.' + decimal_str)/36000) :
+          (unit  < 0) ?  ((aboveZero)*Math.pow(10,-unit) +
+                          Number( ((decimal_str=='') || (decimal_str==undefined)) ? 0 :
+                                  (decimal_str.substring(0,-unit) + '.'+ decimal_str.substring(-unit,decimal_str.length)))
+                         ) :
+          ( console.log("Oh no error process_tm, unit = " + unit) )
+        );
+  return(rtt);     
+  /*
+  if (unit == 0) { return(aboveZero + Number('0.' + decimal_str)); }
+  if (unit == 1) { return( (aboveZero/10) + Number('0.0' + decimal_str)); }
+  if (unit == 2) { return( (aboveZero/60) + Number('0.'+decmimal_str)/60 ) } 
+  if (unit == 3) { return( (aboveZero/600) + Number('0.'+decmimal_str)/600 ) } 
+  if (unit == 4) { return( (aboveZero/(60*60)) + Number('0.'+decmimal_str)/(60*60) ) } 
+  if (unit == 5) { return( (aboveZero/(600*60)) + Number('0.' + decimal_str)/(600*60) ) }
   if (unit < 0) {  
-    if (decimal == '') { return( (aboveZero) * Math.pow(10,-unit)); }
+    if ((decimal_str == '') || (decimal_str == undefined) || (decimal_str == null)) { return( (aboveZero) * Math.pow(10,-unit)); }
     return( (aboveZero) * Math.pow(10,-unit) +
-                           Number(decimal.substring(0,-unit) + '.' + decimal.substring(-unit, decimal.length) ) ); }
+                           Number(decimal_str.substring(0,-unit) + '.' + decimal_str.substring(-unit, decimal_str.length) ) ); }
   if (unit > 5) { console.log(" No process for larger time stamps yet, hour is max upper scale."); }
+   */
   return(0);
 }
 
@@ -273,7 +287,18 @@ const clean_process_string0 = function (s0) {
   }
   return({'a0':a0,'ns0':ns0,'d0':d0});
 }
+const process_string_bi = function(s0) {
+  const ss0 = clean_process_string0_bi(s0);
+  return( ss0.ns0 + 1000000000n * ss0.a0);
+}
+// my_this.pretty_num.uninvert_bi(bardr.timeX, bardr.unit, bardr.st_time);
+const uninvert_bi = function(t1, unit, s0) {
+  const s0n = BigInt(process_string_bi(s0));
+  const mult_const = bigmult(unit);
+  return(BigInt(Math.floor(mult_const * t1)) + s0n);
+}
 
+// pretty_num.clean_process_string0_bi('12:00:00.000')
 const clean_process_string0_bi = function (s0) {
   let spl0 = s0.split('.'); let d0 = ''; if (spl0.length >= 2) { d0 = spl0[1]; }
   let a0 = BigInt(total_secs_bi(spl0[0]));
@@ -285,7 +310,7 @@ const clean_process_string0_bi = function (s0) {
 }
 // total_secs = my_this.pretty_num.total_secs
 //my_this.pretty_num.string_del_tm(0,0,'12:00:00.000000',true)
-//
+//  
 const recast_unit = function(t0, unit0, unit1, base_st_time) {
   const string_t0 = string_del_tm(t0, unit0, base_st_time, true);
   return(process_del_tm(string_t0, unit1, base_st_time));
@@ -400,9 +425,127 @@ const string_del_tm = function(t1, unit, st0, fullunit) {
   }
   return( Number(frs) + 'ns');
 }
-//string_del_tm(1,0,'12:00:00',true)
 
-exports = {'pretty_num':pretty_num, 'string_del_tm':string_del_tm, 'process_del_tm':process_del_tm,
+const bigint_del_tm = function(t1, unit, st0, fullunit) {
+  // st0 is a string representation of a "base time", aka something like "12:00:00.0430239432"
+  //
+  // "t1" is the delta from st0, in units marked by "unit" parameter.
+  //
+  //   Note that "unit = 0" means that a unit is 1 second.
+  //     a unit = "-1" or (100ms or .1 seconds), then 1.0 = "0.1" seconds
+  //     a unit = "+1" or (10 seconds)
+  //     a unit = "+2" is a minute, or (60 seconds)
+  //     a unit = "+4" is an hour, or (3600 seconds)
+  //     a unit = "-9" is a nanosecond so 1.0 = .000000001 seconds;
+  //
+  //  The goal of this operation is to take t1 and construct a new string version of time at t1.
+  //
+  //  Our math, so far is rather slow.
+  //     1. Take t1 and try and compute "seconds" and "nanosecond remainder" 
+  //         This splits "12.30432" to "a1=1 second" and "ns1=230432000 ns" if "unit=-1"
+  //     2. Compute st0 into seconds/nanoseconds (hence "10:00:10.34" turns into a0=36010 seconds and ns0=340000000 ns)
+  //     3. Try to add seconds and Nanoseconds to get a new "a2 = a0+a1 + seconds(ns0+ns1)" and "ns2=remainder(ns0+ns1)"
+  //     4. Convert "a1,ns2" pair into a printable string.  So if st0="10:00:10.34" and t1=12.30432 for unit 1
+  //          Then a0+a1= 36011, ns1+ns0=570432000, which means we print a string time of
+  //          "10:00:11.570432000".  Given that "unit=-1" is close to seconds in time.
+  //
+  //    Note if we had to print at higher/lower precision (say unit=-5 or unit=+5) we would round the category, or only show
+  //    higher or lower digits.  In general, 4 digits of extra precision over "unit" can be rounded away.
+  //
+  //    Ideally there is a cleaner way to do this, possibly need to leverage BigInt.
+  //    We do need to this flexible units, because we are converting to float 32 and will need to generate plot windows of different
+  //    precision levels.
+  let a0 = 0; let d0 = 0; let ns0 = 0; let sgn1 = 1;
+  let ns1 = 0; let d1 = ''; let np1 = ['','']; let unitmul = 1;
+  let ns1d = 0; let ns1n = 0; let sec1 = 0; let nsr = 0; let a2 = 0; let pt = 1;
+  let hs = 0; let ms = 0; let ss = 0; let frs = '';
+  let decs = unit>=1 ? 1 : ( ( unit > -2) ? 3 : (-unit));
+  let AV = clean_process_string0(st0); let str_nsr = '' + '0';
+  a0 = AV.a0;  d0 = AV.d0;  ns0=AV.ns0;
+  
+  const mmult = bigmult(unit);
+  
+  sgn1 = 1; if (t1 < 0) { sgn1 = -1; t1 = t1 * -1; }
+  ns1 = 0; d1 = ''; np1 = (''+t1).split('.');
+  ns1d = 0; ns1n = 0;  // ns1d is extracted from right  and ns1n is extracted from left of period in a number "13.4323" depending on "unit"
+  // Note this unitmul calculation is asymmetric.  As unit gets larger than 1, units will go to Minutes/Hours/Days
+  unitmul = 1; if (unit == 1) { unitmul = 10; } else if (unit == 2) { unitmul = 60;
+  } else if (unit == 3) { unitmul = 600; } else if (unit == 4) { unitmul = 3600; } else if (unit == 5) { unitmul = 36000; 
+  } else if (unit == 7) { unitmul = 24*3600; // Now a unit is 1 day.
+  } else if (unit < 0) { unitmul = Math.pow(10,unit); } // nanosecond is smallest feasible unit for most applications
+  if (unit >= 0) { d1 = ('' + (t1 * unitmul)).split('.'); if (d1.length >= 2) { d1 = d1[1]; } else {d1 = ''}} 
+  if (unit < 0) {
+    if ((np1[0].length > 1) || (np1[0] != '0')) {
+      ns1n = np1[0] + '0'.repeat(9+unit);
+      if (ns1n.length > 9) { ns1n = ns1n.substring(ns1n.length - 9, ns1n.length) };
+      ns1n = Number(ns1n);
+    } 
+    if ((np1.length >= 2) && (np1[1].length >= 1)) {
+      if (np1[1].length >= 9+unit) { 
+         ns1d = Number( np1[1].substring(0,9+unit));
+      } else { ns1d = Number(np1[1] + '0'.repeat(9+unit - np1[1].length)) }
+    }
+    ns1 = ns1d + ns1n;
+  } else {
+    d1 = ('' + t1*unitmul).split('.');  if (d1.length >= 2) { d1 = d1[1] } else { d1 = '';}
+    if (d1 == '') { ns1 = 0; } else if (d1.length >= 9) { d1 = d1.substring(0,9); ns1 = Number(d1); 
+    } else {  ns1 =  Number(d1 + '0'.repeat(9-d1.length)); }
+  }
+  sec1 = Math.floor(t1 * unitmul);
+  //console.log(" we have a0,ns0="+a0+"," + ns0 + " and sec1,ns1=" + sec1 + "," + ns1); 
+  nsr = ns1*sgn1 + ns0;
+  a2 = sec1*sgn1 + a0;
+  // Dealing with potential remainder because nsr may be bigger now than +-1 sec
+  if (nsr >= 1000000000) {
+    a2 = a2 + 1; nsr = nsr - 1000000000;
+  }
+  if (nsr <= -1000000000) {
+    a2 = a2 -1; nsr = nsr + 1000000000;
+  }
+  if (nsr < 0) {
+    pt = Math.floor(nsr / 1000000000)
+    a2 = a2 +pt; nsr = (-pt*1000000000) + nsr;
+  }
+  if (!(typeof nsr === 'number')) { console.log(" warning, before t1=0 correction we have nsr is " + nsr); }
+  if ((typeof t1 === 'number') && (t1 == 0)) { a2 = a0*1.0; nsr = ns0*1.0; }
+  hs = Math.floor(a2 / (60*60));  ms = Math.floor((a2 - 60 * 60 * hs)/60); ss = (a2 % 60);
+  str_nsr = '' + nsr;
+  frs = ''; if (nsr > 0) { 
+    if (str_nsr.length >= 9) { frs = str_nsr.substring(0,9);
+    } else {
+       frs = '0'.repeat(9-str_nsr.length) + str_nsr; 
+    }
+  } else {
+    frs = '000000000';
+  }
+  //console.log(" we have hs:ms:ss = " + hs + ":" + ms + ":" + ss + " and frs = " + frs + " for nsr = " + nsr);
+  if ((fullunit == true) || (unit >= 3)) {
+    decs = unit >= 1 ? 1 : ( (unit > -2) ? 5-unit : (5-unit));
+    return(hms_connectme(hs,ms,ss,frs,decs,fullunit));
+  }
+  if (unit >= 2) {
+    return(ms_connectme(ms,ss,frs,4));
+  } else if (unit >= -3) {
+    return(s_connectme(ss,frs,5));
+  } else  if (unit >= -4) {
+     return(Number(frs.substring(0,3) + '.' + frs.substring(3,6)) + 'ms'); 
+  } else if (unit >= -6) {
+     return(Number(frs.substring(0,6) +'.' + frs.substring(6,9)) + 'us');
+  }
+  return( Number(frs) + 'ns');
+}
+//string_del_tm(1,0,'12:00:00',true)
+const bigmult = function(unit) {
+    // Determine multiplier to divide object from, assuming unit
+    if (unit == 0) { return(1000000000); 
+    } else if (unit <= 1) { return(Math.pow(10,9+unit)) 
+    } else if (unit <= 3) { return(60*Math.pow(10,7+unit))
+    } else if (unit <= 5) { return(3600*Math.pow(10,5+unit))
+    } else if (unit <= 7) { return(3600*24*Math.pow(10,3+unit))
+    }
+}
+exports = {'pretty_num':pretty_num, 'string_del_tm':string_del_tm, 'process_del_tm':process_del_tm, 'process_tm':process_tm, 
    'hms_connectme':hms_connectme, 'ms_connect_me':ms_connectme,'s_connectme':s_connectme, 'clean_process_string0':clean_process_string0,
-    'total_secs':total_secs, 'recast_unit':recast_unit,'compare_two_unit_num':compare_two_unit_num};
+    'total_secs':total_secs, 'recast_unit':recast_unit,'compare_two_unit_num':compare_two_unit_num, 'bigmult':bigmult,
+    'clean_process_string0_bi':clean_process_string0_bi, 'uninvert_bi':uninvert_bi, 'process_string_bi':process_string_bi};
 module.exports = exports;
