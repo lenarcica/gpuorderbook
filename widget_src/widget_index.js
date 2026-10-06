@@ -22,6 +22,8 @@ const ob = require("../static/internal/ob.js");
 const obwidget = ob.obwidget;
 const printer = require("../static/internal/printer.js");
 
+const ord_algo = require("../static/internal/ord_algo/ord_struct/index.js");
+const sip_algo = require("../static/internal/ord_algo/sip_algo.js");
 
 const vstr = "widget_index.js: ";
 let verbose = 1;
