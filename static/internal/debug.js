@@ -67,8 +67,24 @@ function configureDebugButton(my_this) {
       my_this.blank_button.addEventListener('onClick', (event) => { 
         in_this=my_this;console.log("graphing:::blank_button clicked");  
         my_this.BlankWindow(); 
-      });
+      })//;
       my_this.buttonDiv.appendChild(my_this.blank_button);
+
+      my_this.algo_button = document.createElement('button');
+      my_this.algo_button.style.height = '75' + 'px'; my_this.algo_button.style.width = '150' + 'px';
+      my_this.algo_button.setAttribute('id','algo_button');
+      my_this.algo_button.setAttribute('name','algo_button')
+      my_this.algo_button.setAttribute('text','Run Algo')
+      my_this.algo_button.style.position = 'absolute';  
+      my_this.algo_button.setAttribute('value','Run Algo')
+      my_this.algo_button.setAttribute('height','100px')
+      my_this.algo_button.setAttribute('width', '200px')
+      my_this.algo_button.setAttribute('top', '0px');  my_this.algo_button.style.top = '0px'; my_this.algo_button.style.left = '600px';
+      my_this.algo_button.setAttribute('left','600px');
+      my_this.algo_button.innerHTML = 'Launch Algo';
+      //my_this.algo_button.addEventListener('click', (event) => { in_this=my_this; console.log("graphing:::algo_button clicked");  debugger;});
+      //my_this.algo_button.addEventListener('onClick', (event) => { in_this=my_this; console.log("graphing:::algo_button clicked"); debugger;});
+      my_this.buttonDiv.appendChild(my_this.algo_button);
 
       my_this.reset_button = document.createElement('button');
       my_this.reset_button.style.height = '75' + 'px'; my_this.debug_button.style.width = '150' + 'px';
