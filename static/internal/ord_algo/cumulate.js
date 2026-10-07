@@ -139,7 +139,8 @@ const example_ds = function(ed, bsval, qtype) {
 }
 
 const idx_bad = function(vo, vc) {
-  const idx = Array(vo.length);
+  const idx = (vo !== null) && (vo !== undefined) ? Array(vo.length) : 0;
+  if ((vo == null) ||  (vo == undefined) || (vo.length <= 0)) { return([]); }
   for (let ii = 0; ii < idx.length;ii++) { idx[ii] = ii; }
   return( idx.filter((ii)=>(vo[ii] > vc[ii])));
 }
@@ -148,14 +149,21 @@ const idx_bad = function(vo, vc) {
 // Price then time is usually necessary for doing a cumulation as we need to cumulate
 //  price levels separately.  we assume an index matched price level.
 const idx_spt = function(vpi,vt) {
-  const nn = vpi.length;
+  const nn = ((vpi == null) || (vpi == undefined)) ? 0 : vpi.length;
+  if (nn <= 0) {
+    return([]);
+  } 
   let idx = Array(nn);
   for (let ii = 0; ii <nn;ii++) { idx[ii] = ii; }
   idx = idx.sort((x,y)=> ( (vpi[x]===vpi[y]) ? Number(vt[x]-vt[y]) : (vpi[x]-vpi[y])) );
   return(idx);
 }
 const make_c_data = function(idx,vpi,vt,vq, txt) {
-  const nn = idx.length;
+  const nn = ((idx == null) || (idx == undefined)) ? 0 : idx.length;
+  if (nn <= 0) {
+    return({'vt':new BigInt64Array(0), 'vpi':[],'vq':[],
+          'nn':0});
+  }
   let our_vt = null;
   if ((vt === null) || (vt === undefined) || (vt.length === undefined) || (vt.length <= 0)) {
     console.log("make_c_data: we have an undefined vt. " + " note txt=" + txt); debugger;
@@ -183,6 +191,9 @@ const order_example_cumulate({open,close,qty,price}) {
 }
 */
 const merge_dtype = function(obs) {
+  if ((obs == null) || (obs == undefined) || (obs.length <= 0)) {
+    return(null);
+  }
   if (obs.length === 1) {
     obs.ir = new Uint8Array(obs[0].vt.length);
     return(obs);
@@ -255,7 +266,10 @@ const merge_dtype = function(obs) {
 //  Start with 1. Already a price mapped vpi.
 //             2. vo, vc,  vector of open, close in some format. (ideally BigInt)
 const cumulate_dside = function({vo,vc,vq,vpi,dtitle}) {
-   const nn = vo.length;
+   const nn = ((vo !== null) && (vo !== undefined)) ? vo.length : 0;
+   if (nn <= 0) {
+     return({'vpi':[],'vt': new BigInt64Array(0), 'vq': [] })
+   }
    const count_bad_idx = idx_bad(vo,vc);
    if (count_bad_idx.length > 0) {
      console.log("cumulate_dside: Error in calculation, count_bad_idx is length " + 
@@ -354,13 +368,21 @@ const cumulate_dside = function({vo,vc,vq,vpi,dtitle}) {
            'vq': o_vq.subarray(0,ip)});
 }
 const sort_tp = function(ds) {
-  const nn = ds.vpi.length;
+  const nn = ((ds == null) || (ds.vpi == null) || (ds.vpi == undefined)) ? 0 : ds.vpi.length;
+  if (nn <= 0) {
+    return({'vpi':[], 'vt': new BigInt64Array(0), 'vq': []});
+  }
   const idx = Array(nn);
   for (let ii = 0; ii < nn; ii++) { idx[ii] = ii; }
   idx.sort((x,y)=>((ds.vt[x] == ds.vt[y]) ? (ds.vpi[x] - ds.vpi[y]) : Number(ds.vt[x]-ds.vt[y])));
   return({'vpi': idx.map((x)=>ds.vpi[x]), 'vt': idx.map((x)=>ds.vt[x]), 'vq': idx.map((x)=>ds.vq[x]) });
 }
 const concatenate_cds = function(l_cds, uprice) {
+  if ((l_cds === null) || (l_cds.length <= 0) || (l_cds[0].vt == null) || (l_cds[0].vt.length <= 0)) {
+    return({'vt':new BigInt64Array(0),'vq':[],'vpi':[],'vir':[], 'u_p':[]});
+  }
+
+
   if (l_cds.length == 1) { l_cds[0].vr = Array(l_cds[0].vt.length).fill(1); l_cds[0].u_p = uprice; return(l_cds[0]); }
   let ii = 0;
   const idxL = Array(l_cds.length).fill(0);
@@ -421,8 +443,13 @@ const cumulate_book = function(dside, keep_vs, side="b") {
   const nn = dside.open.length;  let on_t = 0n;  let on_p = 0;  let on_ven = 0;
   let prev_q = 0n; let c_q = 0n;
 
+
+  if (nn <= 0) {
+    return({"side":[], "price":[], "time":new BigInt64Array(0), "venue":[],"mq":[],"rq":[]});
+  }
+
   let i0 = 0; let i1 = 0;
-  let tt_0 = dside.open[i0];  let pp_0 = dside.iprice[i0];
+  let tt_0 = dside.open.length > 0 ? dside.open[i0] : 0;  let pp_0 = dside.iprice[i0];
   let tt_1 = dside.open[i1];  let pp_1 = dside.iprice[i1];
   let vs_0 = (!(!(!kvs))) ? 0 : dside.ivs[i0];
   let vs_1 = (!(!(!kvs))) ? 0 : dside.ivs[i1];
