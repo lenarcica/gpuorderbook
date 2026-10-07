@@ -716,8 +716,8 @@ function populate_device_verts_buffers(device, gpu_pipeline) {
 function update_buffers_wp(data, verbose_ob) {
   const PRINT_N = printer.make_print_n(verbose_ob, "draw_ob.js->update_buffers_wp(): ");
   const divit = 1.0 / Number(bigmult(data.unit));
-  const bi_st0 = BigInt(data.ps.bi_st0);
-  const map_back = ((x) => (divit * Number(x - bi_st0)));
+  const bi_st0 = ((data.ps !== null) && (data.ps !== undefined) && (data.ps.bi_st0 !== undefined)) ? BigInt(data.ps.bi_st0) : 0n;
+  const map_back_bi = ((x) => (divit * Number(x - bi_st0)));
   if ((!(!(data.ps))) && (data.ps.wpt !== null) && (data.ps.wpt.time !== null) && (data.ps.wpt.time.length > 0)) {
     // Note we have to convert both price and time into Float32.  Price is probably literal.
     //  Time conversion will be based on big int procedure
@@ -735,7 +735,7 @@ function update_buffers_wp(data, verbose_ob) {
       PRINT_N(-6, "ERROR data.ps.wpt.time is not type bigint.");
       debugger;
     }
-    const mapped_ps_wt = data.ps.wpt.time.map(map_back);
+    const mapped_ps_wt = data.ps.wpt.time.map(map_back_bi);
     buffers.wp.time = Float32Array.from(mapped_ps_wt);
     buffers.wp.nn = buffers.wp.time.length;
     buffers.wp.bv = []; buffers.wp.sv = [];
@@ -788,37 +788,42 @@ function create_data_buffers(device, data, verbose_ob) {
   const PRINT_N = printer.make_print_n(verbose_ob, "draw_ob.js->create_data_buffers(): ");
   const divit = 1.0 / Number(bigmult(data.unit));
   const bi_st0 = BigInt(data.ps.bi_st0);
-  const map_back = ((x) => (divit * Number(x - bi_st0)));
-  if (!(!(data.nbbo))) {
+  const map_back_bi = ((x) => (divit * Number(x - bi_st0)));
+  const map_back = ((x) => (divit * Number(x)));
+  if ((!(!(data.nbbo))) && (data.nbbo.time.length > 0)) {
+    const map_t = (typeof(data.nbbo.time[0]) == 'bigint') ? map_back_bi : map_back;
     buffers.nbbo =  {"time": new Float32Array( data.nbbo.time.length + 1),
                     "nbb": new Float32Array( data.nbbo.nbb.length + 1),
                     "nbo": new Float32Array( data.nbbo.nbo.length + 1)  }
-    buffers.nbbo.time.set(data.nbbo.time.map(map_back), 0); 
+    buffers.nbbo.time.set(data.nbbo.time.map(map_t), 0); 
     buffers.nbbo.nbb.set(data.nbbo.nbb, 0); 
     buffers.nbbo.nbo.set(data.nbbo.nbo, 0); 
-    buffers.nbbo.time.set([data.nbbo.time[data.nbbo.time.length-1]].map(map_back), data.nbbo.time.length); 
-    buffers.nbbo.nbb.set([data.nbbo.nbb[data.nbbo.time.length-1]], data.nbbo.time.length); 
-    buffers.nbbo.nbo.set([data.nbbo.nbo[data.nbbo.time.length-1]], data.nbbo.time.length); 
+    const nm1 = data.nbbo.time.length -1;
+    buffers.nbbo.time.set([data.nbbo.time[nm1]].map(map_t), data.nbbo.time.length); 
+    buffers.nbbo.nbb.set([data.nbbo.nbb[nm1]], data.nbbo.time.length); 
+    buffers.nbbo.nbo.set([data.nbbo.nbo[nm1]], data.nbbo.time.length); 
   } else { buffers.nbbo = null; }
-  if (!(!(data.buys))) {
+  if (!(!(data.buys)) && (data.buys.qty.length > 0)) {
     buffers.buys =  {"price": new Float32Array( data.buys.price.length),
                        "qty": new Float32Array(   data.buys.qty.length),
                       "open": new Float32Array(  data.buys.open.length),
                      "close": new Float32Array( data.buys.close.length) }
     buffers.buys.price.set(data.buys.price, 0); 
     buffers.buys.qty.set(data.buys.qty, 0); 
-    buffers.buys.open.set(data.buys.open, 0); 
-    buffers.buys.close.set(data.buys.close, 0); 
+    const map_t = (typeof(data.buys.open[0]) == 'bigint') ? map_back_bi : map_back;
+    buffers.buys.open.set(data.buys.open.map(map_t), 0); 
+    buffers.buys.close.set(data.buys.close.map(map_t), 0); 
   } else { buffers.buys=null; }
-  if (!(!(data.sells))) {
+  if ((!(!(data.sells))) && (data.sells.price.length > 0)) {
     buffers.sells =  {"price": new Float32Array( data.sells.price.length),
                         "qty": new Float32Array( data.sells.qty.length),
                        "open": new Float32Array( data.sells.open.length),
                       "close": new Float32Array( data.sells.close.length) }
+    const map_t = (typeof(data.sells.open[0]) == 'bigint') ? map_back_bi : map_back;
     buffers.sells.price.set(data.sells.price, 0); 
     buffers.sells.qty.set(data.sells.qty, 0); 
-    buffers.sells.open.set(data.sells.open, 0); 
-    buffers.sells.close.set(data.sells.close, 0); 
+    buffers.sells.open.set(data.sells.open.map(map_t), 0); 
+    buffers.sells.close.set(data.sells.close.map(map_t), 0); 
   } else { buffers.sells = null; }
 
   if ((!(!(data.ps))) && (data.ps.wpt !== null) && (data.ps.wpt.time !== null) && (data.ps.wpt.time.length > 0)) {
@@ -827,11 +832,12 @@ function create_data_buffers(device, data, verbose_ob) {
     buffers.wp = null;
   }
 
-  if (!(!(data.trades))) {
+  if ((!(!(data.trades))) && (data.trades.time.length > 0)) {
     buffers.trades =  {"time": new Float32Array( data.trades.time.length),
                         "qty": new Float32Array( data.trades.qty.length),
                       "price": new Float32Array( data.trades.price.length)  }
-    buffers.trades.time.set(data.trades.time, 0); 
+    const map_t = (typeof(data.trades.time) == 'bigint') ? map_back_bi : map_back;
+    buffers.trades.time.set(data.trades.time.map(map_t), 0); 
     buffers.trades.qty.set(data.trades.qty, 0); 
     buffers.trades.price.set(data.trades.price, 0); 
   } else { buffers.trades = null; }

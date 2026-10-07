@@ -194,6 +194,20 @@ class obwidget {
     if (!(is_numeric(this.data.tmin))) {
       PRINT_N(-1, "ERROR configureData has not been populated"); debugger;
     }
+    if ( (!(!(this.data.buys))) || (!(!(this.data.buys.open))) || (this.data.buys.open.length <= 0)) {
+      this.data.buys = null;
+    }
+
+    if ( (!(!(this.data.sells))) || (!(!(this.data.sells.open))) || (this.data.sells.open.length <= 0)) {
+      this.data.sells = null;
+    }
+    if ( (!(!(this.data.nbbo))) || (!(!(this.data.nbbo.time))) || (this.data.nbbo.time.length <= 0)) {
+      this.data.nbbo = null;
+    }
+    if ( (!(!(this.data.trades))) || (!(!(this.data.trades.time))) || (this.data.trades.time.length <= 0)) {
+      this.data.trades = null;
+    }
+
     if (is_positive_numeric(this.data.height)) { this.data.height = Math.floor(this.data.height) } else { this.data.height = demo_data.height }
     if (is_positive_numeric(this.data.width)) { this.data.width = Math.floor(this.data.width) } else { this.data.width = demo_data.width }
     if (is_positive_numeric(this.data.bar_width)) { this.data.bar_width = Math.floor(this.data.bar_width) 
@@ -248,21 +262,22 @@ class obwidget {
     const bi_st0 = process_string_bi(this.orig.st_time);
     this.orig.bi_st0 = bi_st0;
     const mm = (x) => (bi_st0 + BigInt(Math.floor(multi*x)));
-    this.unique_prices = [...new Set([...this.data.buys.price,...this.data.sells.price])].sort();
-    this.data.buys.u_p = [...new Set([...this.data.buys.price])].sort((a,b)=>(a-b));
-    this.data.sells.u_p = [...new Set([...this.data.sells.price])].sort((a,b)=>(b-a));
-    this.data.buys.vpi = this.data.buys.price.map((x)=>this.data.buys.u_p.indexOf(x));
-    this.data.sells.vpi = this.data.sells.price.map((x)=>this.data.sells.u_p.indexOf(x));
-    if ( (!(!(this.data.buys.vs))) && (!(!(this.data.sells.vs)))) {
-      this.unique_venues = [...new Set([...this.data.buys.vs,...this.data.sells.vs])].sort();
-      this.data.buys.ivs = this.data.buys.vs.map((x)=>this.unique_venues.indexOf(x));
-      this.data.sells.ivs = this.data.sells.vs.map((x)=>this.unique_venues.indexOf(x));
-    } else {
-      this.unique_venues = []; 
-      this.data.buys.ivs = Array(this.data.buys.price.length).fill(0);
-      this.data.sells.ivs = Array(this.data.sells.price.length).fill(0);
+    this.unique_prices = [...new Set([...((this.data.buys !== null) ? this.data.buys.price : []),...(
+                                          (this.data.sells != null) ? this.data.sells.price: [])])].sort();
+    if (!(!(this.data.buys))) {
+      this.data.buys.u_p = [...new Set([...(this.data.buys !== null) ? this.data.buys.price: []])].sort((a,b)=>(a-b));
     }
-    const bd = this.data.buys;
+    if (!(!(this.data.sells))) { 
+      this.data.sells.u_p = [...new Set([...(this.data.sells != null) ? this.data.sells.price: []])].sort((a,b)=>(b-a));
+    }
+    if (!(!(this.data.buys))) { this.data.buys.vpi = this.data.buys.price.map((x)=>this.data.buys.u_p.indexOf(x)); }
+    if (!(!(this.data.sells))) { this.data.sells.vpi = this.data.sells.price.map((x)=>this.data.sells.u_p.indexOf(x)); }
+    this.unique_venues = [...new Set([...((this.data.buys !== null) && (!(!(this.data.buys.vs)))) ? this.data.buys.vs : [],
+                                      ...((this.data.sells !== null) && (!(!(this.data.sells.vs)))) ? this.data.sells.vs: []])].sort();
+    if ((this.data.buys !== null) && (!(!(this.data.buys.vs)))) { this.data.buys.ivs = this.data.buys.vs.map((x)=>this.unique_venues.indexOf(x)); }
+    if ((this.data.sells !== null) && (!(!(this.data.sells.vs)))) { this.data.sells.ivs = this.data.sells.vs.map((x)=>this.unique_venues.indexOf(x)); }
+
+    const bd = (this.data.buys == null) ? {'price':[], 'qty':[], 'open':[], 'close':[], 'ivs':[], 'u_p':[], 'vpi':[]} : this.data.buys;
     DEBUG && PRINT_N(2, "Calculate Buy m dside");
     const bm = sort_tp(cumulate_dside({'vo':bd.open.map(mm),'vc':bd.close.map(mm),'vq':bd.qty,'vpi':bd.vpi, 'dtitle':'buys_cumulate'}));
     let set_buys = [bm];
@@ -273,9 +288,9 @@ class obwidget {
       set_buys.push(br1);
     }
     DEBUG && PRINT_N(2, "concatenating Buys");
-    const oad_b = cumulate.concatenate_cds(set_buys, this.data.buys.u_p); 
+    const oad_b = cumulate.concatenate_cds(set_buys, bd.u_p); 
 
-    const sd = this.data.sells;
+    const sd = (this.data.sells == null) ? {'price':[], 'qty':[], 'open':[], 'close':[], 'ivs':[], 'u_p':[], 'vpi':[]} : this.data.sells;
     if (sd.open.length <= 0) {
       PRINT_N(-6, "runOBATest: there is zero length sells."); debugger;
     }
@@ -288,7 +303,7 @@ class obwidget {
       const sr1 = sort_tp(cumulate_dside({'vo':sd.open.filter(g1).map(mm),'vc':sd.close.filter(g1).map(mm),'vq':sd.qty.filter(g1),'vpi':sd.vpi.filter(g1),'dtitle':('sells_g1_cumulate:' + iven)}));
       set_sells.push(sr1);
     }
-    const oad_s = cumulate.concatenate_cds(set_sells, this.data.sells.u_p); 
+    const oad_s = cumulate.concatenate_cds(set_sells, sd.u_p); 
     this.oad = {'b':oad_b,'s':oad_s, 'nr':this.unique_venues.length, 'bi_st0':bi_st0}; 
 
     if ((oad_b.u_p === null) || (oad_b.u_p === undefined) || (oad_s.u_p == null) || (oad_s.u_p === undefined)) {
@@ -310,7 +325,11 @@ class obwidget {
     }
     const imulti = 1.0 / multi;
     //nbbo_diffs['time'] = nbbo_diffs['time'].map((x)=>(Number(x) * imulti));
-    this.data.nbbo = nbbo_diffs;
+    if ((this.data.nbbo === null) || (this.data.nbbo === undefined) || (!(this.data.nbbo))) {
+      if (nbbo_diffs.time.length > 0) {
+        this.data.nbbo = nbbo_diffs;
+      }
+    }
     const out_col =  (this.algo_data.w_crit_p > 0) ? ['v_b_crit_p','v_s_crit_p'] : ['v_b_wp','v_s_wp'];
     const npr = (this.algo_data.w_crit_p > 0) ? 0 : this.oad.nr;
     this.data.ps.wpt = this.data.ps.export_reduced_table_all_k(out_col, ['v_b_p','v_s_p'],npr);
@@ -1394,7 +1413,7 @@ class obwidget {
        PRINT_N(2, "Okay, we did our run of algo -- did we get wpt?");
        my_this.run_algo_button.style.backgroundColor = 'rgb(250,0,0)';
        PRINT_N(2, " Running  update to buffers wp");
-       my_this.draw_ob.update_buffers_wp(my_this.data, my_this.verbose_ob);
+       my_this.draw_ob.update_buffers_wp(my_this.data, my_this.verbose_ob, my_this.pretty_time);
        PRINT_N(2, " Update buffers_wp with new data");
        my_this.call_plot();
        my_this.run_algo_button.style.backgroundColor = off_color;

@@ -73,6 +73,7 @@ var past_ps = {"i":-1, "bs01":-1,"lev":-1, "price":0.0, "dist":-1};
 //
 // Note we converted timeX into integer times so seekn is different.
 const current_nbbo_i = function(timeX, nbbo, pasti) {
+  if ((nbbo === null) || (nbbo === undefined)) { return(-1); }
   if (nbbo.length <= 0) { return(-1); }
   if (nbbo.time[0] > timeX) { return(-1); }
   if (nbbo.time[nbbo.time.length-1] <= timeX) { return(nbbo.time.length-1) }
@@ -351,6 +352,7 @@ const place_svg_ps = function(svg_svg, data, timeX, priceY, price_delta, wpfac, 
   return(0);
 }
 const binary_nbbo_i = function(timeX, nbbo) {
+  if ((nbbo === null) || (nbbo === undefined)) { return(-1); }
   if (nbbo.length <= 0) { return(-1); }
   if (nbbo.length <= 1) { if (nbbo.time[0] <= timeX) { return(0); } else {return(-1); }}
   //console.log("binary_nbbo_i called for nbbo of length " + nbbo.time.length);
@@ -844,35 +846,35 @@ const add_svg_mouse_over = function(svg_div,svg_svg, text_svg, data, text_width,
         //  data.buys.price[buy_price_bounds[0]] + "," + buy_price_bounds[1]+"]");
         //
         let ptc = {'nbbo':0, 'ps':0, 'buys':0,'sells':0,'trades':0};
-        if (!(!(data.nbbo))) {
+        if  ( (!(!(data.nbbo))) && (!(!(data.nbbo.time))) && (data.nbbo.time.length > 0)) {
           ptc.nbbo = place_svg_nbbo(svg_svg, data, orig_timeX);
         }
         let pttl_1 = prop_mo.tipText.length;
         if (pttl_1 < pttl_0) {
           console.log("Error, pttl_1=" + pttl_1 + ", pttl_0=" + pttl_0); debugger;
         }
-        if (!(!(data.ps.v_b_wp))) {
+        if ( (!(!(data.ps.v_b_wp))) && (data.ps.v_b_wp.length > 0)) {
           ptc.ps = place_svg_ps(svg_svg, data, timeX, priceY, price_delta, wpfac, wpmax);
         }
         let pttl_2 = prop_mo.tipText.length
         if (pttl_2 < pttl_1) {
           console.log("Error, pttl_2=" + pttl_2 + ", pttl_1=" + pttl_1); debugger;
         }
-        if (!(!(data.buys))) {
+        if ( (!(!(data.buys))) && (!(!(data.buys.open))) && (data.buys.open.length > 0)) {
           ptc.buys = place_svg_buys(svg_svg, data, srt_buys, orig_timeX, priceY, price_delta, buy_price_bounds, wpfac, wpmax);
         }
         let pttl_3 = prop_mo.tipText.length;
         if (pttl_3 < pttl_2) {
           console.log("Error, pttl_3=" + pttl_3 + ", pttl_2=" + pttl_2); debugger;
         }
-        if (!(!(data.sells))) {
+        if ( (!(!(data.sells)))  && (!(!(data.sells.open))) && (data.sells.open.length > 0)) {
           ptc.sells = place_svg_sells(svg_svg, data, srt_sells, orig_timeX, priceY, price_delta, sell_price_bounds, wpfac, wpmax);
         }
         let pttl_4 = prop_mo.tipText.length;
         if (pttl_4 < pttl_3) {
           console.log("Error, pttl_4=" + pttl_4 + ", pttl_3=" + pttl_3); debugger;
         }
-        if (!(!(data.trades))) {
+        if ( (!(!(data.trades))) && (!(!(data.trades.time))) && (data.trades.time.length > 0)) {
           ptc.trades = place_svg_trades(svg_svg, data, srt_buys, orig_timeX, priceY, price_delta, trade_bounds, wpfac, wpmax, srt_trades);
           //if (trade_range.ret.length > 0) { debugger; }
         }
@@ -1034,10 +1036,10 @@ const wipe_ob_svgs = function(svg_div, svg_svg, wDiv) {
         const lwp = svg_svg.getElementById('line_wp_price_min');
         if ((!(lwp=== null)) && (!(lwp===undefined)) && (!(!(lwp)))) { lwp.setAttribute('d',''); }
         let striangles = svg_svg.getElementById('sell_trade_triangles_selected');
-        if ((striangles!==null) || (striangles!==undefined) || (!(!(striangles)))) {  striangles.setAttribute('d',''); }
+        if ((striangles!==null) && (striangles!==undefined) && (!(!(striangles)))) {  striangles.setAttribute('d',''); }
 
         let btriangles = svg_svg.getElementById('buy_trade_triangles_selected');
-        if ((btriangles!==null) || (btriangles!==undefined) || (!(!(btriangles)))) {  btriangles.setAttribute('d',''); }
+        if ((btriangles!==null) && (btriangles!==undefined) && (!(!(btriangles)))) {  btriangles.setAttribute('d',''); }
         //nPath = "M 0, " + locY + " H " + data.width + " M " + locX + ", 0 V " + data.height;
         const nPath = "";
 
