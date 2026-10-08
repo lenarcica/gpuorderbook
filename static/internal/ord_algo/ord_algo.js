@@ -1306,6 +1306,7 @@ const order_algo =  function(oad,
   PRINT_N(1, " --- We have exited loop, we are nearly completed with no errors.  Now to convert PrintState to a RecordBatch");
   ps.splice_limit();
   ps.xb = xb;  ps.tcs = tcs;
+  PRINT_N(1, " --- Splice Limit successful.");
   // Note we might not do this in most javascript, as this is completely finished record batch.
   //const rb = ps.make_record_batch(tcs, verbose);
   //return(rb);
