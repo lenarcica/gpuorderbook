@@ -581,7 +581,8 @@ const place_svg_nbbo = function(svg_svg, data, orig_timeX) {
      const wtfac = calc_unscale_wtfac(data); const wtmin = data.tmin;
      const mm = (x) => (st_time_bi + BigInt(Math.floor(mult_const*x)));
      const imult_const = 1.0/mult_const;
-     const imm = (x) => imult_const * Number((BigInt(x)-BigInt(st_time_bi))); 
+     const imm = (x) => ((typeof(data.nbbo.time[0]) == 'bigint') ? imult_const * Number((BigInt(Math.floor(x))-BigInt(st_time_bi))) : 
+                         (x)=>(x)); 
      //const new_nbbo_i = current_nbbo_i(orig_timeX, data.nbbo, past_nbbo_i);
      const new_nbbo_i = seek_new_time(mm(orig_timeX), data.nbbo.time, past_nbbo_i);
      //console.log("new_nbbo_i found to be: " + new_nbbo_i + "/" + data.nbbo.time.length + ", past_nbbo_i=" + past_nbbo_i);

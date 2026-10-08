@@ -55,6 +55,8 @@ const xwid = 5; const hline_effect = .15; const ywid = 5; const vline_effect = .
 const slider_pixels = 20; const price_delta = 1.5;
 const priceFontWid = 18;
 
+const buttons_left_loc = ['1000','1300'];
+
 
 async function WebGPU_GetAdapterAndDevice() {
   const PRINT_N = printer.my_printer(default_verbose_ob, "ob.js->WebGPU_GetAdapterAndDevice(): ");
@@ -101,7 +103,7 @@ function resort_dside(dside) {
     console.log("cumulating buy side");
     const br1 = sort_tp(cumulate_dside({'vo':bd.open.filter(f1),'vc':bd.close.filter(f1),'vq':bd.qty.filter(f1),'vpi':bd.vpi.filter(f1),'dtitle':'buys_f1_cumulate'}));
      
-    const sd = use_data.sells;
+    const sd = dside.sells;
     if (sd.open.length <= 0) {
       console.log("runOBATest: there is zero length sells."); debugger;
     }
@@ -110,8 +112,8 @@ function resort_dside(dside) {
     console.log("cumulating sell side");
     const sr1 = sort_tp(cumulate_dside({'vo':sd.open.filter(g1),'vc':sd.close.filter(g1),'vq':sd.qty.filter(g1),'vpi':sd.vpi.filter(g1),'dtitle':'sells_f1_cumulate'}));
   
-    const oad_b = cumulate.concatenate_cds([bm,br1], use_data.buys.uprice);
-    const oad_s = cumulate.concatenate_cds([sm,sr1], use_data.sells.uprice);
+    const oad_b = cumulate.concatenate_cds([bm,br1], dside.buys.uprice);
+    const oad_s = cumulate.concatenate_cds([sm,sr1], dside.sells.uprice);
     const oad = {'b':oad_b,'s':oad_s, 'nr':nven}; 
 }
 
@@ -122,10 +124,12 @@ const run_algo = function(my_this, PRINT_N) {
   const multi = pretty_num.bigmult(my_this.orig.unit);
   const time_min_bi = BigInt(Math.round(multi * my_this.orig.tmin)) + my_this.oad.bi_st0;
   const time_max_bi = BigInt(Math.round(multi * my_this.orig.tmax)) + my_this.oad.bi_st0;
+  DEBUG && PRINT_N(1, " -- About to run order_algo");
   my_this.data.ps = ord_algo.order_algo(my_this.oad, my_this.algo_data.v_d, null, 
                                          my_this.algo_data.kalgo, my_this.algo_data.w_sum_q, my_this.algo_data.w_sum_pq, 
                                          my_this.algo_data.w_avp, my_this.algo_data.w_wp, my_this.algo_data.w_nocc, 
                                          my_this.algo_data.w_atq, my_this.algo_data.w_crit_pi, my_this.algo_data.w_crit_p, my_this.verbose_ob, time_min_bi, time_max_bi); 
+  DEBUG && PRINT_N(1, " -- Order algo returned a ps  length: " + ((my_this.data.ps !== null) && (my_this.data.ps !== undefined) ? my_this.data.ps.length : 0)); 
   my_this.data.bi_st0 = my_this.oad.bi_st0;
   DEBUG && PRINT_N(1, "os.js->run_algo -- success apparently.");
 }
@@ -194,17 +198,17 @@ class obwidget {
     if (!(is_numeric(this.data.tmin))) {
       PRINT_N(-1, "ERROR configureData has not been populated"); debugger;
     }
-    if ( (!(!(this.data.buys))) || (!(!(this.data.buys.open))) || (this.data.buys.open.length <= 0)) {
+    if ( (!(this.data.buys)) || (!(this.data.buys.open)) || (this.data.buys.open.length <= 0)) {
       this.data.buys = null;
     }
 
-    if ( (!(!(this.data.sells))) || (!(!(this.data.sells.open))) || (this.data.sells.open.length <= 0)) {
+    if ( (!(this.data.sells)) || (!(this.data.sells.open)) || (this.data.sells.open.length <= 0)) {
       this.data.sells = null;
     }
-    if ( (!(!(this.data.nbbo))) || (!(!(this.data.nbbo.time))) || (this.data.nbbo.time.length <= 0)) {
+    if ( (!(this.data.nbbo)) || (!(this.data.nbbo.time)) || (this.data.nbbo.time.length <= 0)) {
       this.data.nbbo = null;
     }
-    if ( (!(!(this.data.trades))) || (!(!(this.data.trades.time))) || (this.data.trades.time.length <= 0)) {
+    if ( (!(this.data.trades)) || (!(this.data.trades.time)) || (this.data.trades.time.length <= 0)) {
       this.data.trades = null;
     }
 
@@ -256,10 +260,63 @@ class obwidget {
     this.configure_algo_data();
     DEBUG && PRINT_N(1," -- we have done the algo data.");
   }
+  configure_form_pt() {
+    const my_this = this;
+    console.log("configure_form_pt() initialize.");
+    if ((this.formDiv === undefined) || (this.formDiv === null)) {
+      console.log("configure_form_pt() can't work with this.formDiv as null.");
+    }
+    const uv = this.data.unique_venues;  const unm03 = this.data.onm03;
+    if ((uv === undefined) || (uv === null)) {
+      console.log("configure_form_pt() error unique_venues is undefined!!"); debugger; 
+    }
+    const PRINT_N = printer.my_printer(this.verbose_ob, "ob.js->configure_form_pt(len=" + uv.length + ",unm03=" + unm03 + "): ");
+    console.log(" --- Starting configure_form_pt: uv.length=" + uv.length);
+    let Group = ['All'];  
+    if (uv.length <= 1) {
+    } else if (onm03 == 3) {
+      Group.push('market');  for (let ii = 0; ii < uv.length;ii++) { if (uv[ii] != 'market') { Group.push(uv[ii]); }}
+    } else if (onm03 == 2) {
+      Group.push('m');  for (let ii = 0; ii < uv.length;ii++) { if (uv[ii] != 'm') { Group.push(uv[ii]); }}
+    } else if (onm03 == 1) {
+      Group.push('market');  for (let ii = 0; ii < uv.length-1;ii++) { Group.push(uv[ii]); }
+    } else {
+      for (let ii = 0; ii < uv.length;ii++) { Group.push(uv[ii]); }
+    }
+    DEBUG && PRINT_N(-2, " -- We have Group = [" + Group.join(",") + "]");
+    DEBUG && PRINT_N(-2, " -- We have Group = [" + Group.join(",") + "]");
+    for (let ii=0;ii<Group.length;ii++) {
+      const newOption = new Option("" + Group[ii],"" + Group[ii]);
+      this.formDiv.f_input_participant_target.add(newOption);
+    }
+    DEBUG && PRINT_N(-2, " Creating Charger Function.");
+    const Changer = function(event) {
+      console.log("configure_form_pt: Changer() called.");
+      const sv = event.target.value;
+      if (sv == 'all') { 
+        this.data.pl_filt = null;
+      } else if ( ((unm03==3) && (sv == 'market')) || ((unm03==2) && (sv == 'm')) || ((unm03==1) && (sv == 'market'))) {
+        if (unm03 == 3) {
+          this.data.pl_filt = ((x) => (x==this.data.nr));
+        } else if (unm03 == 2) {
+          this.data.pl_filt = ((x) => (x==this.data.nr));
+        } else if (unm03 == 1) {
+          this.data.pl_filt = ((x) => (x==this.data.nr));
+        }
+      }  else {
+        let bri = -1;
+        for (let ii = 0; ii < uv.length;ii++) { if (uv[ii] == sv) { bri=ii; break; } }
+        this.data.pl_filt = ((x) => (x==bri));
+      }
+    }
+    PRINT_N(-5, "installing change.");
+    this.formDiv.f_input_participant_target.addEventListener('change',Changer);
+  }
   configure_algo_data() {
     const PRINT_N = printer.my_printer(this.verbose_ob, "ob.js->configure_algo_data()");
     const multi = pretty_num.bigmult(this.orig.unit);
     const bi_st0 = process_string_bi(this.orig.st_time);
+    let nr = this.data.nr;
     this.orig.bi_st0 = bi_st0;
     const mm = (x) => (bi_st0 + BigInt(Math.floor(multi*x)));
     this.unique_prices = [...new Set([...((this.data.buys !== null) ? this.data.buys.price : []),...(
@@ -272,18 +329,33 @@ class obwidget {
     }
     if (!(!(this.data.buys))) { this.data.buys.vpi = this.data.buys.price.map((x)=>this.data.buys.u_p.indexOf(x)); }
     if (!(!(this.data.sells))) { this.data.sells.vpi = this.data.sells.price.map((x)=>this.data.sells.u_p.indexOf(x)); }
-    this.unique_venues = [...new Set([...((this.data.buys !== null) && (!(!(this.data.buys.vs)))) ? this.data.buys.vs : [],
+    this.data.unique_venues = [...new Set([...((this.data.buys !== null) && (!(!(this.data.buys.vs)))) ? this.data.buys.vs : [],
                                       ...((this.data.sells !== null) && (!(!(this.data.sells.vs)))) ? this.data.sells.vs: []])].sort();
-    if ((this.data.buys !== null) && (!(!(this.data.buys.vs)))) { this.data.buys.ivs = this.data.buys.vs.map((x)=>this.unique_venues.indexOf(x)); }
-    if ((this.data.sells !== null) && (!(!(this.data.sells.vs)))) { this.data.sells.ivs = this.data.sells.vs.map((x)=>this.unique_venues.indexOf(x)); }
-
+    const uv = this.data.unique_venues;
+    if ((this.data.buys !== null) && (!(this.data.buys.vs))) { this.data.buys.ivs = Array(this.data.buys.open.length).fill(0); }
+    if ((this.data.sells !== null) && (!(this.data.sells.vs))) { this.data.sells.ivs = Array(this.data.sells.open.length).fill(0); }
+    if ((this.data.buys !== null) && (!(!(this.data.buys.vs)))) { this.data.buys.ivs = this.data.buys.vs.map((x)=>uv.indexOf(x)); }
+    if ((this.data.sells !== null) && (!(!(this.data.sells.vs)))) { this.data.sells.ivs = this.data.sells.vs.map((x)=>uv.indexOf(x)); }
+    DEBUG && PRINT_N(2, " About to look at onm03");
+    const onm03 = ((uv.includes('market')) ? 3 :
+                   (uv.includes('m')) ? 2 : 
+                   ((!(!(nr))) && (nr > 0) && (Math.isInteger(uv[uv.length-1])) && 
+                    (uv.length > nr) && (uv[uv.length-1] == nr)) ? 1 :
+                   0);
+    this.data.onm03 = onm03;
     const bd = (this.data.buys == null) ? {'price':[], 'qty':[], 'open':[], 'close':[], 'ivs':[], 'u_p':[], 'vpi':[]} : this.data.buys;
+    DEBUG && PRINT_N(2, " Got bd");
+    const filt_b = ((onm03 === 0) ? ((x)=>(true)) :
+                    (onm03 === 1) ? ((x,ix)=> (bd.vs[ix] == nr)) :
+                    (onm03 === 2) ? ((x,ix)=>(bd.vs[ix] == 'm')) :
+                    (onm04 === 3) ? ((x,ix)=>(bd.vs[ix] == 'market')) : ((x)=>(true)));
     DEBUG && PRINT_N(2, "Calculate Buy m dside");
-    const bm = sort_tp(cumulate_dside({'vo':bd.open.map(mm),'vc':bd.close.map(mm),'vq':bd.qty,'vpi':bd.vpi, 'dtitle':'buys_cumulate'}));
+    const bm = sort_tp(cumulate_dside({'vo':bd.open.filter(filt_b).map(mm), 'vc':bd.close.filter(filt_b).map(mm), 
+                                       'vq':bd.qty.filter(filt_b), 'vpi':bd.vpi.filter(filt_b), 'dtitle': 'buys_cumulate'}));
     let set_buys = [bm];
-    for (let iven=0; iven < this.unique_venues.length; iven++) {
+    for (let iven=0; iven < uv.length; iven++) {
       const f1 = (x,i)=>bd.ivs[i]==iven; 
-      DEBUG && PRINT_N(6, "Calculate Buy iven for " + iven + "/" + this.unique_venues.length);
+      DEBUG && PRINT_N(6, "Calculate Buy iven for " + iven + "/" + uv.length);
       const br1 = sort_tp(cumulate_dside({'vo':bd.open.filter(f1).map(mm),'vc':bd.close.filter(f1).map(mm),'vq':bd.qty.filter(f1),'vpi':bd.vpi.filter(f1),'dtitle':('buys_f1_cumulate'+iven)}));
       set_buys.push(br1);
     }
@@ -294,17 +366,22 @@ class obwidget {
     if (sd.open.length <= 0) {
       PRINT_N(-6, "runOBATest: there is zero length sells."); debugger;
     }
+    const filt_s = ((onm03 === 0) ? ((x)=>(true)) :
+                    (onm03 === 1) ? ((x,ix)=> (sd.vs[ix] == nr)) :
+                    (onm03 === 2) ? ((x,ix)=>(sd.vs[ix] == 'm')) :
+                    (onm04 === 3) ? ((x,ix)=>(sd.vs[ix] == 'market')) : ((x)=>(true)));
     DEBUG && PRINT_N(1, " Creating cumulate_dside for Sells, starting with market.");
-    const sm = sort_tp(cumulate_dside({'vo':sd.open.map(mm),'vc':sd.close.map(mm),'vq':sd.qty,'vpi':sd.vpi,'dtitle':'sells_cumulate'}));
+    const sm = sort_tp(cumulate_dside({'vo':sd.open.filter(filt_s).map(mm), 'vc':sd.close.filter(filt_s).map(mm), 
+                                       'vq':sd.qty.filter(filt_s), 'vpi':sd.vpi.filter(filt_s), 'dtitle': 'sells_cumulate'}));
     let set_sells = [sm];
-    for (let iven=0; iven < this.unique_venues.length; iven++) {
+    for (let iven=0; iven < uv.length; iven++) {
       const g1 = (x,i)=>sd.ivs[i]==iven; 
       DEBUG && PRINT_N(6, "Creating iven = " + iven + " now cumulate_dside");
       const sr1 = sort_tp(cumulate_dside({'vo':sd.open.filter(g1).map(mm),'vc':sd.close.filter(g1).map(mm),'vq':sd.qty.filter(g1),'vpi':sd.vpi.filter(g1),'dtitle':('sells_g1_cumulate:' + iven)}));
       set_sells.push(sr1);
     }
     const oad_s = cumulate.concatenate_cds(set_sells, sd.u_p); 
-    this.oad = {'b':oad_b,'s':oad_s, 'nr':this.unique_venues.length, 'bi_st0':bi_st0}; 
+    this.oad = {'b':oad_b,'s':oad_s, 'nr': (onm03 == 2) ? uv.length - 1 : uv.length, 'bi_st0':bi_st0}; 
 
     if ((oad_b.u_p === null) || (oad_b.u_p === undefined) || (oad_s.u_p == null) || (oad_s.u_p === undefined)) {
       DEBUG && PRINT_N(-6, "Configuration of oads: we have u_p is null somewhere?");  debugger;
@@ -315,10 +392,15 @@ class obwidget {
     this.algo_button.addEventListener('onClick', (event) => { PRINT_N(1, "graphing:::algo_button onClick: run_algo"); run_algo(); PRINT_N(1, " --- algo button. Finished")});
     DEBUG && PRINT_N(1,"Automatically Run Algo anyway!");
     run_algo(this, PRINT_N);
-    if (printer.is_numeric(this.data.ps)) {
-      PRINT_N(-6, "ERROR on our algo run?" + this.data.ps + " inspect?"); debugger;
+    if ((this.data.ps === null) || (this.data.ps === undefined)) {
+      PRINT_N(-6, " ERROR, we have Order algo was run but returned nothing.");
+    } else if (printer.is_numeric(this.data.ps)) {
+      PRINT_N(-6, " ERROR on our algo run?" + this.data.ps + " inspect?"); debugger;
     }
-    this.orig.nbbo = {'time': [...this.data.nbbo.time], 'nbb' : [...this.data.nbbo.nbb], 'nbo' : [...this.data.nbbo.nbb]}
+    DEBUG && PRINT_N(1, "constructing orig nbbo, will try to replace with algo result.");
+    this.orig.nbbo = (((this.data.nbbo !== null) && (this.data.nbbo !== undefined) && (this.data.nbbo.length > 0)) ? 
+                       {'time': [...this.data.nbbo.time], 'nbb' : [...this.data.nbbo.nbb], 'nbo' : [...this.data.nbbo.nbb]}
+                       : {'time':[], 'nbb':[], 'nbo':[]});
     let nbbo_diffs = this.data.ps.export_reduced_table(['v_best_bids','v_best_asks'], ['nbb','nbo'], 0, 0);
     if (nbbo_diffs === null) {
       PRINT_N(-6, "-- Attempt to algo configure: NBBO diffs returned null.  Why?"); debugger;
@@ -330,6 +412,7 @@ class obwidget {
         this.data.nbbo = nbbo_diffs;
       }
     }
+    DEBUG && PRINT_N(2, " moving to out col.");
     const out_col =  (this.algo_data.w_crit_p > 0) ? ['v_b_crit_p','v_s_crit_p'] : ['v_b_wp','v_s_wp'];
     const npr = (this.algo_data.w_crit_p > 0) ? 0 : this.oad.nr;
     this.data.ps.wpt = this.data.ps.export_reduced_table_all_k(out_col, ['v_b_p','v_s_p'],npr);
@@ -343,6 +426,7 @@ class obwidget {
     //'nbbo':nbbo.to_dict(orient='list'),'buys':buys.to_dict(orient='list'),'sells':sells.to_dict(orient='list'),
     DEBUG && PRINT_N(2,"configureData-confgure_algo_data: We have completed our data.");
     DEBUG && PRINT_N(2,"configureData, this.oad.b.vpi is length " + this.oad.b.vpi.length);
+    DEBUG && PRINT_N(1, "configure Data concluded.");
   }
   //bigmult = pretty_num.bigmult;
   async createRenderer(props) {
@@ -439,6 +523,10 @@ class obwidget {
 
       this.formDiv.f_min = this.formDiv.querySelector("#input_mintime");
       this.formDiv.f_max = this.formDiv.querySelector("#input_maxtime");
+      this.formDiv.f_input_participant_target = this.formDiv.querySelector('#input_participant_target');
+      if ((this.formDiv.f_input_participant_target === null) || (this.formDiv.f_input_participant_target ===undefined)) {
+        console.log("Error f_input_participant_target not found in form."); debugger;
+      }
       this.el.appendChild(this.formDiv);
       this.configureFormHandles();
       this.configure_checkbox('drawQuotes','do_quotes');  this.configure_checkbox('drawNBBO', 'do_nbbo');
@@ -645,6 +733,7 @@ class obwidget {
       this.install_export_csv_button();
       this.install_draw_bars();
       this.install_dr_touch();
+      this.configure_form_pt();
       //console.log("After configure time drag"); debugger;
   }
   viewSyncHandler(viewSync) {
@@ -765,7 +854,7 @@ class obwidget {
       }
       this_widget.gpu_pipeline = this.draw_ob.OB_generate_gpu_pipeline(this_widget.gpu_pipeline, this_widget.canvas_gpu,
         this_widget.adapter, this_widget.device, this_widget);
-      DEBUG && PRINT_N(5, "call_plot() -- ob_pu_render to be called.");
+      DEBUG && PRINT_N(1, "call_plot()[frameFunction()]-- ob_pu_render to be called.");
       this.draw_ob.ob_gpu_render(this_widget.gpu_pipeline, this.do_plots);
     }
     let frameCallback = frameFunction(here_this, draw_ob);
@@ -1364,7 +1453,7 @@ class obwidget {
     this.run_algo_button.setAttribute('height','60px')
     this.run_algo_button.setAttribute('width', '250px')
     this.run_algo_button.style.backgroundColor = off_color;
-    this.run_algo_button.setAttribute('top', '10px');  this.run_algo_button.style.top = '10px'; this.run_algo_button.style.left = '1100px';
+    this.run_algo_button.setAttribute('top', '10px');  this.run_algo_button.style.top = '10px'; this.run_algo_button.style.left = buttons_left_loc[1] + 'px';
     this.run_algo_button.setAttribute('left','1100px');
     this.run_algo_button.innerHTML = 'Rerun Algo'; this.run_algo_button.style.fontSize = '20px';
       //my_this.algo_button.addEventListener('click', (event) => { in_this=my_this; console.log("graphing:::algo_button clicked");  debugger;});
@@ -1437,7 +1526,7 @@ class obwidget {
     this.export_orders_csv_button.setAttribute('height','60px')
     this.export_orders_csv_button.setAttribute('width', '150px')
     this.export_orders_csv_button.style.backgroundColor = off_color;
-    this.export_orders_csv_button.setAttribute('top', '90px');  this.export_orders_csv_button.style.top = '90px'; this.export_orders_csv_button.style.left = '800px';
+    this.export_orders_csv_button.setAttribute('top', '90px');  this.export_orders_csv_button.style.top = '90px'; this.export_orders_csv_button.style.left = buttons_left_loc[0] + 'px';
     this.export_orders_csv_button.setAttribute('left','1400px');
     this.export_orders_csv_button.innerHTML = 'Export Orders Csv'; this.export_orders_csv_button.style.fontSize = '20px';
     this.export_algo_csv_button = document.createElement('button');
@@ -1450,7 +1539,7 @@ class obwidget {
     this.export_algo_csv_button.setAttribute('height','60px')
     this.export_algo_csv_button.setAttribute('width', '150px')
     this.export_algo_csv_button.style.backgroundColor = off_color;
-    this.export_algo_csv_button.setAttribute('top', '90px');  this.export_algo_csv_button.style.top = '90px'; this.export_algo_csv_button.style.left = '1100px';
+    this.export_algo_csv_button.setAttribute('top', '90px');  this.export_algo_csv_button.style.top = '90px'; this.export_algo_csv_button.style.left = buttons_left_loc[1] + 'px';
     this.export_algo_csv_button.setAttribute('left','1400px');
     this.export_algo_csv_button.innerHTML = 'Export Algo Csv'; this.export_algo_csv_button.style.fontSize = '20px';
     this.formDiv.appendChild(this.export_orders_csv_button);
@@ -1494,7 +1583,7 @@ class obwidget {
     this.time_button.setAttribute('height','60px')
     this.time_button.setAttribute('width', '250px')
     this.time_button.style.backgroundColor = off_color;
-    this.time_button.setAttribute('top', '10px');  this.time_button.style.top = '10px'; this.time_button.style.left = '800px';
+    this.time_button.setAttribute('top', '10px');  this.time_button.style.top = '10px'; this.time_button.style.left = buttons_left_loc[0] + 'px';
     this.time_button.setAttribute('left','800px');
     this.time_button.innerHTML = 'Time Window Select'; this.time_button.style.fontSize = '20px';
       //my_this.algo_button.addEventListener('click', (event) => { in_this=my_this; console.log("graphing:::algo_button clicked");  debugger;});
