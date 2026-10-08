@@ -11,6 +11,7 @@
 const printer = require("./printer.js");
 const is_numeric = printer.is_numeric;
 const default_verbose_ob = {'s':[], verbose:0};
+var verbose_ob = default_verbose_ob;
 var PRINT_N = printer.make_print_n(default_verbose_ob,"draw_ob:");
 
 var buffers = {uniform_buffer:null,nbbo:null,buys:null,sells:null,trades:null};
@@ -219,7 +220,7 @@ const triangle_verts_arrow = [
   [  0, ( 2.0/3.0) * (1.0 / Math.sqrt(2))],
   [.5,(-1.0/3.0) * (1.0 / Math.sqrt(2))]
 ]
-const uniform_buffer_size  = 16;
+const uniform_buffer_size  = 18;
 const VS_Uniforms_struct_code = ` 
       struct VS_Uniforms_0 {
         tmin: f32, tmax: f32, 
@@ -229,7 +230,8 @@ const VS_Uniforms_struct_code = `
         bs01: f32, max_qty: f32,
         tfrac: f32, pfrac: f32,
         pow_qty: f32, t_c_min: f32,
-        trade_mul_fac:f32,msg_mul_fac:f32
+        trade_mul_fac:f32,msg_mul_fac:f32,
+        draw_all:u32
       };
 `;
 const VS_Offset_Uniforms_struct_code = `
@@ -267,7 +269,7 @@ const nbbo_module_header_code = `
 `
 
 function create_nbbo_data_module_code( nbb_or_nbo_code, which_color_code) {
-   console.log("create_nbbo_data_module_code about to write tagged code with nbb_or_nbo_code = " + nbb_or_nbo_code)
+   DEBUG && console.log("create_nbbo_data_module_code about to write tagged code with nbb_or_nbo_code = " + nbb_or_nbo_code)
    const code= `
      ${VS_Uniforms_struct_code}
      ${get_nbbo_group_bindings_code(nbb_or_nbo_code)}
@@ -448,11 +450,11 @@ const make_ob_module = function(label_text, color_text, bindgroup) {
       let locy: f32 = msg_lineloc[vertexIndex*2 + 1];
       let i0:u32 = instanceIndex / 4; let i1:u32 = instanceIndex % 4;
       let i_in:i32 = ivs[i0]+0;
-      //let ikeep:i32 = select((1&ivs[i0]), 
-      //                      select(((1<<8)&ivs[i0])>0, 
-      //                             select((1<<16)&ivs[i0],(1<<24)&ivs[i0],i1==2),
-      //                             i1==1), 
-      //                       i1 == 0);
+      let ikeep:bool = select(1>0, select((1&ivs[i0])>0, 
+                            select(((1<<8)&ivs[i0])>0, 
+                                   select(((1<<16)&ivs[i0])>0,((1<<24)&ivs[i0])>0,i1>2),
+                                   i1 > 1), 
+                             i1 > 0), u0.draw_all==0);
       let t_loc:f32 = select( (open[instanceIndex] - u0.t_c_min) * u0.tfrac - u0.lwd_w*u0.msg_mul_fac,
                            (close[instanceIndex] - u0.t_c_min) * u0.tfrac + u0.lwd_w*u0.msg_mul_fac,
                            locx >= 0.05)-1.0;
@@ -460,7 +462,7 @@ const make_ob_module = function(label_text, color_text, bindgroup) {
         (price[instanceIndex] - u0.pmin)* u0.pfrac - u0.lwd_h,
         (price[instanceIndex] - u0.pmin)* u0.pfrac + u0.lwd_h, locy > 0.05)-1.0;
       var output: VertexOut;
-      output.position =  vec4f(t_loc, p_loc, 0.0, 1.0);
+      output.position =  select(vec4f(-10.0,-10.0,0.0,1.0), vec4f(t_loc, p_loc, 0.0, 1.0), ikeep);
       var qty_level:f32 = pow( (1.0*qty[instanceIndex]) / (1.0*u0.max_qty), u0.pow_qty );
       //qty_level = .5;
       ${color_text}
@@ -609,7 +611,8 @@ async function get_device_buffer(gpu_pipeline, a_device_buffer) {
 //        bs01: f32, max_qty: f32,
 //        tfrac: f32, pfrac: f32,
 //        pow: f32, t_c_min: f32,
-//        trade_mul_fac:f32,msg_mul_fac:f32
+//        trade_mul_fac:f32,msg_mul_fac:f32,
+//        draw_all:u32
 function update_uniform_bs01_device_buffer(device, bs01, gpu_pipeline) {
   //buffers.uniform_buffer.set([bs01,0],8);
   if (!(gpu_pipeline.uniform_device_buffer)) {
@@ -668,6 +671,7 @@ function fill_uniform_buffer(data, gpu_pipeline, device) {
   // min q, maxq, u0_tfrac,  tfrac2.
   buffers.uniform_buffer.set([0.0,data.max_qty,(2.0/data.origmult)/(data.tmax - data.tmin),2.0/(data.pmax-data.pmin)], 8); 
   buffers.uniform_buffer.set([data.pow_qty,data.tmin*data.origmult,data.trade_mul_fac,data.msg_mul_fac],12)
+  buffers.uniform_buffer.set(new Uint32Array(1).fill(0),16); // draw_all parameter
   if (!(gpu_pipeline)) {
     console.log("ERROR -- gpu_pipeline not found."); debugger;
   } else if (!(gpu_pipeline.uniform_device_buffer)) {
@@ -862,6 +866,50 @@ function create_data_buffers(device, data, verbose_ob) {
   } else { buffers.trades = null; }
 
 }
+function help_revalue_ivs(int_array, ivs,filt_f) { 
+  const nof = Math.ceil(ivs.length/4);
+  let i_base = 0;
+  for (let ii = 0; ii < nof; ii++) {
+    const ar0 = ((filt_f === null) ? [1,1,1,1] : [filt_f(ivs[i_base]), filt_f(ivs[i_base+1]), filt_f(ivs[i_base+2]), filt_f(ivs[i_base+3])].map((x)=>Number(x)));
+    const new_on = ar0[0] + ( ar0[1] << 8) + (ar0[2] << 16) + (ar0[3] << 24);
+    int_array.set([new_on],ii);   i_base += 4;
+  }
+}
+const str_i32bit = function(int_array,ix) {
+  const md = int_array[ix];
+  return( Number((1&md)>0) + "|" + 
+          Number((((1<<8)&md)>0)) + "|" + 
+          Number((((1<<16)&md)>0)) + "|" + 
+          Number(((((1<<24))&md)>0)) + "");
+}
+function revalue_ivs(data, filt_f) {
+   if ((buffers.uniform_buffer === null) || (buffers === null)) { return(-1); }
+   if ((filt_f === null) || (filt_f === undefined)) {
+     buffers.uniform_buffer.set(new Uint32Array(1).fill(0),16);
+   } else {
+     buffers.uniform_buffer.set(new Uint32Array(1).fill(0),16);
+   }
+   if ((!(!(data.buys))) && (!(!(data.buys.ivs)))) {
+     help_revalue_ivs(buffers.buys.ivs,data.buys.ivs,filt_f);
+     try {
+       device.queue.writeBuffer(gpu_pipeline.device_buys_buffers.ivs, 0, buffers.buys.ivs);
+       device.queue.writeBuffer(gpu_pipeline.uniform_device_buffer, 16 * 4,
+          buffers.uniform_buffer, 16, 2);
+     } catch {
+  
+     }
+   }
+   if ((!(!(data.sells))) && (!(!(data.sells.ivs)))) {
+     help_revalue_ivs(buffers.sells.ivs,data.sells.ivs,filt_f);
+     try {
+       device.queue.writeBuffer(gpu_pipeline.device_sells_buffers.ivs, 0, buffers.buys.ivs);
+       device.queue.writeBuffer(gpu_pipeline.uniform_device_buffer, 16 * 4,
+          buffers.uniform_buffer, 16, 2);
+     } catch {
+  
+     }
+   }
+}
 function populate_device_data_wp_buffers(device, gpu_pipeline) {
    //console.log("populate_device_data_wp_buffers");
    //debugger;
@@ -1010,6 +1058,7 @@ function create_nbbo_bindgroup(device,gpu_pipeline, nbb_or_nbo) {
 
 
 function create_wp_bindgroup(device,gpu_pipeline, bvorsv) {
+  const PRINT_N = printer.make_print_n(verbose_ob,"create_wp_bindgroup:");
   if (!(gpu_pipeline.device_wp_buffers)) {
     PRINT_N(-10, " ERROR create_wp_bindgroup we don't have device_wp_buffers yet."); debugger;
   } else if (!(gpu_pipeline.device_wp_buffers.time)) {
@@ -1153,7 +1202,7 @@ function ob_gpu_render(gpu_pipeline, do_plots) {
   }
   //const node_pipeline = gpu_pipeline.node_pipeline; 
   //const edge_pipeline=gpu_pipeline.edge_pipeline;
-  //console.log("Create nbbo_bindgroup");
+  DEBUG && PRINT_N(3, "Create nbbo_bindgroup");
   const nbb_bindgroup = create_nbbo_bindgroup(gpu_pipeline.device, gpu_pipeline,'nbb');
   const nbo_bindgroup = create_nbbo_bindgroup(gpu_pipeline.device, gpu_pipeline,'nbo');
 
@@ -1169,11 +1218,11 @@ function ob_gpu_render(gpu_pipeline, do_plots) {
   //}
   //const bv_bindgroup = ((false) && (buffers.wp !== null)) ? create_wp_bindgroup(gpu_pipeline.device, gpu_pipeline, "bv") : null;
   //const sv_bindgroup = ((false) && (buffers.wp !== null)) ? create_wp_bindgroup(gpu_pipeline.device, gpu_pipeline, "sv") : null; 
-  DEBUG && PRINT_N(1, " creating buys_bindgroup.");
+  DEBUG && PRINT_N(2, " creating buys_bindgroup.");
   const buys_bindgroup = create_buys_bindgroup(gpu_pipeline.device, gpu_pipeline);
   const sells_bindgroup = create_sells_bindgroup(gpu_pipeline.device, gpu_pipeline);
   const trades_bindgroup = create_trades_bindgroup(gpu_pipeline.device, gpu_pipeline);
-  //console.log("create encoder Render pass from rpd"); 
+  DEBUG && PRINT_N(3, "create encoder Render pass from rpd"); 
   const render_pass = encoder.beginRenderPass(rpd);
   //update_uniform_bs01_device_buffer(device,0,gpu_pipeline);
   //console.log(" set pipeline with gpu_pipeline.nbbo_pipeline");
@@ -1199,7 +1248,7 @@ function ob_gpu_render(gpu_pipeline, do_plots) {
   //console.log(" update to call bs01=1 buffers");
   render_pass.setPipeline(gpu_pipeline.nbo_pipeline);
   render_pass.setBindGroup(0, nbo_bindgroup);
-  //console.log(" Last Call, length [" + nbbo_verts.length + "," + buffers.nbbo.time.length + "]");
+  DEBUG && PRINT_N(4, " Last Call, length [" + nbbo_verts.length + "," + buffers.nbbo.time.length + "]");
   render_pass.draw(nbbo_verts.length, buffers.nbbo.time.length-1);  // call our vertex shader 3 times (if function is (3))
   }
   if ((buffers.wp !== null) && (buffers.wp.doplot=true) && (do_plots.do_wp==true)) {
@@ -1220,7 +1269,7 @@ function ob_gpu_render(gpu_pipeline, do_plots) {
   DEBUG && PRINT_N(6, "buffers.trades.price has length " + buffers.trades.price.length);
   }
   render_pass.end();
-  //console.log(" Trying to finish commandBuffer.");
+  DEBUG && PRINT_N(3, " Trying to finish commandBuffer.");
   const commandBuffer = encoder.finish();
   device.queue.submit([commandBuffer]);
   DEBUG && PRINT_N(3, "ob_gpu_render, we have submitted buffer and are complete");
@@ -1233,7 +1282,7 @@ exports = {'buffers':buffers, "populate_device_data_buffers":populate_device_dat
    "update_uniform_bs01_device_buffer":update_uniform_bs01_device_buffer,"update_uniform_window_device_buffer":update_uniform_window_device_buffer,
    "create_vert_buffers":create_vert_buffers,
    "fill_uniform_buffer":fill_uniform_buffer,"renew_uniform_buffer":renew_uniform_buffer,
-   "populate_device_verts_buffers":populate_device_verts_buffers, 
+   "populate_device_verts_buffers":populate_device_verts_buffers,  "revalue_ivs":revalue_ivs, "str_i32bit":str_i32bit,
    "generate_individual_pipeline":generate_individual_pipeline, "generate_gpu_renderPassDescriptor":generate_gpu_renderPassDescriptor,
    "createDepthTextureDesc":createDepthTextureDesc, "blank_main":blank_main,
    "OB_generate_gpu_pipeline":OB_generate_gpu_pipeline, "ob_gpu_render":ob_gpu_render, "get_device_buffer":get_device_buffer,

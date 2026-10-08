@@ -102,9 +102,11 @@ const bin_seek_time = function(timeXn, time_v) {
     const u_mh = Math.floor(.5*(u0 + u1));
     const u_m = (u_mh >= u1) ? (u1-1) : ((u_mh <= u0) ? (u0 + 1) : u_mh);
     if ((time_v[u_m] <= timeXn) && (time_v[u_m+1] > timeXn)) { return(u_m); }
+    if (time_v[u_m+1] == timeXn) { return(u_m+1); }
     if (time_v[u_m+1] < timeXn) { u0 = u_m + 1;
     } else if (time_v[u_m] > timeXn) { u1 = u_m; 
-    } else { console.log("what Wrong?");  debugger; }
+    } else if (time_v[u_m] == timeXn) { return(u_m); 
+    } else { console.log("bin_seek_time?  Something is wrong. nn=" + nn + ".");  debugger; }
     //console.log("u0 = " + u0 + ", u_1 = " + u1 + ", u_m = " + u_m + ", time_v[u_m] = " + time_v[u_m]); 
     ns++;
     if (ns >= 10000) { console.log("Error, ns=" + ns + ", u0=" + u0 + ", u1=" + u1); return(-1); }
@@ -184,11 +186,11 @@ const generate_lln = function(data, pseq, tseq, timeX, priceY) {
   const mult_const = bigmult(data.unit);
   const imult_const = 1.0/mult_const;
   const st_time_bi = BigInt(pretty_num.process_tm(data.st_time, -9));
-  const wtfac = calc_unscale_wtfac(data);
-  const wtmin = calc_unscale_wtmin(data);
+  const wtfac = (typeof(tseq[0]) == 'bigint') ? calc_unscale_wtfac(data) : (data.height/(data.tmax-data.tmin));
+  const wtmin = (typeof(tseq[0]) == 'bigint') ? calc_unscale_wtmin(data) : data.tmin;
   const mm = (x) => (st_time_bi + BigInt(Math.floor(mult_const*x)));
   const imm = (x) => imult_const * Number((BigInt(x)-BigInt(st_time_bi))); 
-  const iwt_imm = (x) => Math.floor(wtfac * (imm(x)- wtmin) );
+  const iwt_imm = ((typeof(tseq[0]) == 'bigint') ? (x) => Math.floor(wtfac * (imm(x)- wtmin) ) : (x) => Math.floor(wtfac*(x-wtmin)));
 
   const wpmin = data.pmin; const wpmax = data.pmax;
   const wpfac = (data.height) / (data.pmax-data.pmin);
@@ -245,6 +247,7 @@ ptime0 = 0n; sumOH = 0; oH = 0;  lln = "";
 lln = generate_lln(new_ps, data, timeX, priceY, price_delta, wtfac, wtmin, wpfac, wpmax);
 
 `);
+// data = my_this.data;  locX=502;  locY = 209;  timeX = data.tmin + (locX/data.width) * (data.tmax-data.tmin; priceY =  data.pmax - (locY / data.height) * (data.pmax-data.pmin)
 const place_svg_ps = function(svg_svg, data, timeX, priceY, price_delta, wpfac, wpmax) {
   if ((data.ps === null) || (data.ps === undefined)) { past_ps = null; return(-1); }
   const mult_const = bigmult(data.unit);
@@ -519,7 +522,13 @@ const place_svg_buys = function(svg_svg, data, srt_buys, orig_timeX, priceY, pri
    const wtfac = calc_scale_wtfac(data);
    const wtmin = calc_scale_wtmin(data);
    const buy_range = get_obs_range(data.buys, srt_buys, orig_timeX, priceY, price_delta, buy_price_bounds, "is_buy");
-   buy_select = [...buy_range.ret];
+   //if (data.keep_iv === null) {
+   //  console.log("Note data.keep_iv is null");
+   //} else {
+   //  console.log("data.keep_iv is not null.  Buy escape"); debugger;
+   //}
+   const iv_filt = ((data.keep_iv === null) ? ((x)=>true) : ((x)=>(data.buys.ivs[x] == data.keep_iv)));
+   buy_select = [...buy_range.ret].filter(iv_filt);
    if (buy_select.length >= 100) {
      console.log("CONCERNING -- Buy select, something is concerning, we have buy_select of length " + buy_select.length);
      console.log("  breaking.");
@@ -532,14 +541,14 @@ const place_svg_buys = function(svg_svg, data, srt_buys, orig_timeX, priceY, pri
             blines = make_hline("line_buys_selected",-1,-1,-1,'blue',5); blines.setAttribute('z-level',4);
             svg_svg.appendChild(blines); 
    }
-   if (!(!(buy_range.ret)) && (buy_range.ret.length > 0)) {
-     update_hline(data.buys,buy_range.ret, blines, data);
-     prop_mo.n_buys = buy_range.ret.length;
+   if (!(!(buy_select)) && (buy_select.length > 0)) {
+     update_hline(data.buys,buy_select, blines, data);
+     prop_mo.n_buys = buy_select.length;
      prop_mo.tipText = prop_mo.tipText + "<br>Buys :["
-     for (let ii = 0; ii < buy_range.ret.length; ii++) {
-       prop_mo.tipText = (prop_mo.tipText + "<br>  $" + data.buys.price[buy_range.ret[ii]] + "," + data.buys.qty[buy_range.ret[ii]] + "(" +  
-          (pretty_num.string_del_tm(data.buys.open[buy_range.ret[ii]] / data.origmult, data.unit, data.st_time,true))  + "-" +
-          (pretty_num.string_del_tm(data.buys.close[buy_range.ret[ii]] / data.origmult, data.unit, data.st_time,true))  + ")");
+     for (let ii = 0; ii < buy_select.length; ii++) {
+       prop_mo.tipText = (prop_mo.tipText + "<br>  $" + data.buys.price[buy_select[ii]] + "," + data.buys.qty[buy_select[ii]] + "(" +  
+          (pretty_num.string_del_tm(data.buys.open[buy_select[ii]] / data.origmult, data.unit, data.st_time,true))  + "-" +
+          (pretty_num.string_del_tm(data.buys.close[buy_select[ii]] / data.origmult, data.unit, data.st_time,true))  + ")");
     }
     prop_mo.tipText = prop_mo.tipText + "<br>]";
   } else { blines.setAttribute('d',''); prop_mo.n_buys = 0;}
@@ -549,7 +558,9 @@ const place_svg_sells = function(svg_svg, data, srt_sells, orig_timeX, priceY, p
   const wtfac = calc_scale_wtfac(data);
   const wtmin = calc_scale_wtmin(data);
   const sell_range = get_obs_range(data.sells, srt_sells, orig_timeX, priceY, price_delta, sell_price_bounds, "is_sell");
-  sell_select = [...sell_range.ret];
+
+  const iv_filt = ((data.keep_iv === null) ? ((x)=>true) : ((x)=>(data.sells.ivs[x] == data.keep_iv)));
+  sell_select = [...sell_range.ret].filter(iv_filt);
   if (sell_select.length >= 100) {
     console.log("CONCERNING -- Sell select, something is concerning, we have sell_select of length " + sell_select.length);
     console.log("  breaking.");
@@ -560,14 +571,14 @@ const place_svg_sells = function(svg_svg, data, srt_sells, orig_timeX, priceY, p
   if ((slines===null) || (slines===undefined) || (!(slines))) {  
     slines = make_hline("line_sells_selected",-1,-1,-1,'red',5); slines.setAttribute('z-level',4);svg_svg.appendChild(slines); 
   }
-  if (!(!(sell_range.ret)) && (sell_range.ret.length > 0)) {
-    update_hline(data.sells,sell_range.ret, slines, data);
-    prop_mo.n_sells = sell_range.ret.length;
+  if (!(!(sell_select)) && (sell_select.length > 0)) {
+    update_hline(data.sells,sell_select, slines, data);
+    prop_mo.n_sells = sell_select.length;
     prop_mo.tipText = prop_mo.tipText + "<br>Sells :["
-    for (let ii = 0; ii < sell_range.ret.length; ii++) {
-      prop_mo.tipText = (prop_mo.tipText + "<br>  $" + data.sells.price[sell_range.ret[ii]] + "," + data.sells.qty[sell_range.ret[ii]] + "(" +  
-        (pretty_num.string_del_tm(data.sells.open[sell_range.ret[ii]] / data.origmult, data.unit, data.st_time,true))  + "-" +
-        (pretty_num.string_del_tm(data.sells.close[sell_range.ret[ii]] / data.origmult, data.unit, data.st_time,true))  + ")");
+    for (let ii = 0; ii < sell_select.length; ii++) {
+      prop_mo.tipText = (prop_mo.tipText + "<br>  $" + data.sells.price[sell_select[ii]] + "," + data.sells.qty[sell_select[ii]] + "(" +  
+        (pretty_num.string_del_tm(data.sells.open[sell_select[ii]] / data.origmult, data.unit, data.st_time,true))  + "-" +
+        (pretty_num.string_del_tm(data.sells.close[sell_select[ii]] / data.origmult, data.unit, data.st_time,true))  + ")");
     }
     prop_mo.tipText = prop_mo.tipText + "<br>]";
   } else { slines.setAttribute('d','');  prop_mo.n_sells =0; }
@@ -575,13 +586,14 @@ const place_svg_sells = function(svg_svg, data, srt_sells, orig_timeX, priceY, p
 }
 const place_svg_nbbo = function(svg_svg, data, orig_timeX) {
    const wpfac = (data.height) / (data.pmax-data.pmin); const wpmax = data.pmax;
+   const f0bi1 = (typeof(data.nbbo.time[0]) == 'bigint') ? 1 : 0;
    if (!(!(data.nbbo))) {
-     const mult_const = bigmult(data.unit);
+     const mult_const = ((f0bi1==1) ? bigmult(data.unit) : data.origmult);
      const st_time_bi = BigInt(pretty_num.process_tm(data.st_time, -9));
-     const wtfac = calc_unscale_wtfac(data); const wtmin = data.tmin;
-     const mm = (x) => (st_time_bi + BigInt(Math.floor(mult_const*x)));
+     const wtfac = ((f0bi1==1) ? calc_unscale_wtfac(data) : data.width/(data.tmax-data.tmin)); const wtmin = data.tmin;
+     const mm = ((f0bi1)==1) ? (x) => (st_time_bi + BigInt(Math.floor(mult_const*x))) : ((x)=>x);
      const imult_const = 1.0/mult_const;
-     const imm = (x) => ((typeof(data.nbbo.time[0]) == 'bigint') ? imult_const * Number((BigInt(Math.floor(x))-BigInt(st_time_bi))) : 
+     const imm = ((f0bi1==1) ? (x) => imult_const * Number((BigInt(Math.floor(x))-BigInt(st_time_bi))) : 
                          (x)=>(x)); 
      //const new_nbbo_i = current_nbbo_i(orig_timeX, data.nbbo, past_nbbo_i);
      const new_nbbo_i = seek_new_time(mm(orig_timeX), data.nbbo.time, past_nbbo_i);
@@ -615,11 +627,14 @@ const place_svg_nbbo = function(svg_svg, data, orig_timeX) {
        prop_mo.last_nbbo.pnbb = pnbb; prop_mo.last_nbbo.pnbo = pnbo; 
        prop_mo.n_nbbo = 2; prop_mo.last_nbbo.n_nbbo = 2;
 
-       const iwt_imm = (x) => Math.floor(wtfac * (imm(x)- wtmin) );
-
-       const tm = data.nbbo.time[new_nbbo_i]; let ltm = iwt_imm(tm);
-       const ntm = (new_nbbo_i < data.nbbo.nbb.length-1) ? data.nbbo.time[new_nbbo_i+1] : data.tmax;
+       const iwt_imm = ((f0bi1 == 1) ? (x) => Math.floor(wtfac * (imm(x)- wtmin) ) : (x)=>Math.floor(wtfac * (x-wtmin)));
+       const tm = data.nbbo.time[new_nbbo_i]; const ltm = iwt_imm(tm);
+       const ntm = (new_nbbo_i < 0) ? data.nbbo.nbb[0] : (((new_nbbo_i >= 0) && (new_nbbo_i < data.nbbo.nbb.length-1)) ? data.nbbo.time[new_nbbo_i+1] : data.tmax);
        const lntm = iwt_imm(ntm);
+
+       if (Number.isNaN(lntm) || Number.isNaN(ltm)) {
+         console.log("ERROR: lntm or ltm are NAN"); debugger;
+       }
        prop_mo.last_nbbo.pnbb=pnbb; prop_mo.last_nbbo.pnbo=pnbo; prop_mo.last_nbbo.tm=tm; prop_mo.last_nbbo.ntm=ntm; prop_mo.last_nbbo.lntm=lntm;
        prop_mo.last_nbbo.wtmin=wtmin; prop_mo.last_nbbo.tmin=data.tmin;  prop_mo.last_nbbo.tmax=data.tmax;
        //console.log("new_nbbo_i we have lpnbb=" + lpnbb + ", lpnbo=" + lpnbo + ", ltm = " + ltm + " for ["+pnbb.toFixed(2)+","+pnbo.toFixed(2) + "] " + tm.toFixed(2));

@@ -46,7 +46,7 @@ const recast_unit = pretty_num.recast_unit;
 const string_del_tm = pretty_num.string_del_tm;
 const process_del_tm = pretty_num.process_del_tm;
 const process_string_bi = pretty_num.process_string_bi;
-const default_height = 500;  const default_width = 600; const default_bar_width = 200;
+const default_height = 700;  const default_width = 600; const default_bar_width = 200;
 // Note that canvas_pixels cannot exceek 8000
 var canvas_pixels = 2; var height_canvas = default_height; var width_canvas = default_width;
 var canvas_tweak = 0; // Incase extra tweak to put CANVAS on SVG necessary
@@ -128,7 +128,7 @@ const run_algo = function(my_this, PRINT_N) {
   my_this.data.ps = ord_algo.order_algo(my_this.oad, my_this.algo_data.v_d, null, 
                                          my_this.algo_data.kalgo, my_this.algo_data.w_sum_q, my_this.algo_data.w_sum_pq, 
                                          my_this.algo_data.w_avp, my_this.algo_data.w_wp, my_this.algo_data.w_nocc, 
-                                         my_this.algo_data.w_atq, my_this.algo_data.w_crit_pi, my_this.algo_data.w_crit_p, my_this.verbose_ob, time_min_bi, time_max_bi); 
+                                         my_this.algo_data.w_atq, my_this.algo_data.w_crit_pi, my_this.algo_data.w_crit_p, my_this.oad_verbose_ob, time_min_bi, time_max_bi); 
   DEBUG && PRINT_N(1, " -- Order algo returned a ps  length: " + ((my_this.data.ps !== null) && (my_this.data.ps !== undefined) ? my_this.data.ps.length : 0)); 
   my_this.data.bi_st0 = my_this.oad.bi_st0;
   DEBUG && PRINT_N(1, "os.js->run_algo -- success apparently.");
@@ -148,13 +148,14 @@ class obwidget {
           Math.random().toString(36).substring(2, 5));
     this.verbose = is_numeric(model.get('verbose')) ? model.get('verbose') : 0; 
     this.verbose_ob = {'s':[], 'verbose':this.verbose};
+    this.oad_verbose_ob = {'s':[], 'verbose':this.verbose-3};
     const vstr = "obwidget()";
     this.PRINT_N = printer.my_printer(this.verbose_ob, vstr);
     DEBUG && this.PRINT_N(1, "obwidget() -- constructor called. -- verbose = " + (this.verbose));
     DEBUG && this.PRINT_N(0, "  We have initiated obwidget with verbose = " + this.verbose);
     DEBUG && this.PRINT_N(0, " We completed constructor.");
     this.setupDefaults();
-    this.el = el; this.model = model;
+    this.el = el; this.model = model;  this.draw_ob.verbose_ob = this.verbose_ob;
     const in_data = this.model.get('data');
     this.algo_data = {'kalgo': (is_numeric(model.get('kalgo')) ? model.get('kalgo') : 0),
                  'v_d': ((!(!(model.get('v_d')))) ? model.get('v_d') : [1,5,10]),
@@ -266,11 +267,11 @@ class obwidget {
     if ((this.formDiv === undefined) || (this.formDiv === null)) {
       console.log("configure_form_pt() can't work with this.formDiv as null.");
     }
-    const uv = this.data.unique_venues;  const unm03 = this.data.onm03;
+    const uv = this.data.unique_venues;  const onm03 = this.data.onm03;
     if ((uv === undefined) || (uv === null)) {
       console.log("configure_form_pt() error unique_venues is undefined!!"); debugger; 
     }
-    const PRINT_N = printer.my_printer(this.verbose_ob, "ob.js->configure_form_pt(len=" + uv.length + ",unm03=" + unm03 + "): ");
+    const PRINT_N = printer.my_printer(this.verbose_ob, "ob.js->configure_form_pt(len=" + uv.length + ",onm03=" + onm03 + "): ");
     console.log(" --- Starting configure_form_pt: uv.length=" + uv.length);
     let Group = ['All'];  
     if (uv.length <= 1) {
@@ -289,28 +290,53 @@ class obwidget {
       const newOption = new Option("" + Group[ii],"" + Group[ii]);
       this.formDiv.f_input_participant_target.add(newOption);
     }
+    my_this.data.pl_filt = null;
     DEBUG && PRINT_N(-2, " Creating Charger Function.");
     const Changer = function(event) {
       console.log("configure_form_pt: Changer() called.");
       const sv = event.target.value;
-      if (sv == 'all') { 
-        this.data.pl_filt = null;
-      } else if ( ((unm03==3) && (sv == 'market')) || ((unm03==2) && (sv == 'm')) || ((unm03==1) && (sv == 'market'))) {
-        if (unm03 == 3) {
-          this.data.pl_filt = ((x) => (x==this.data.nr));
-        } else if (unm03 == 2) {
-          this.data.pl_filt = ((x) => (x==this.data.nr));
-        } else if (unm03 == 1) {
-          this.data.pl_filt = ((x) => (x==this.data.nr));
+      if ((sv == 'all') || (sv=='All')) { 
+        my_this.data.keep_iv = null;
+        my_this.data.pl_filt = ((x)=>(true));
+      } else if ( ((onm03==3) && (sv == 'market')) || ((onm03==2) && (sv == 'm')) || ((onm03==1) && (sv == 'market'))) {
+        if (onm03 == 3) {
+          my_this.data.keep_iv =  my_this.data.nr;
+          my_this.data.pl_filt = ((x) => (x==my_this.data.nr));
+        } else if (onm03 == 2) {
+          my_this.data.keep_iv = my_this.data.nr;
+          my_this.data.pl_filt = ((x) => (x==my_this.data.nr));
+        } else if (onm03 == 1) {
+          my_this.data.keep_iv = null;
+          my_this.data.pl_filt = ((x) => (true));
         }
       }  else {
         let bri = -1;
         for (let ii = 0; ii < uv.length;ii++) { if (uv[ii] == sv) { bri=ii; break; } }
-        this.data.pl_filt = ((x) => (x==bri));
+        my_this.data.keep_iv = bri;
+        my_this.data.pl_filt = ((x) => (x==my_this.data.keep_iv));
       }
+      if ((my_this.draw_ob.buffers.uniform_buffer === null) || ((my_this.draw_ob.buffers.buys === null) && (my_this.draw_ob.buffers.sells===null))) {
+        return(1);
+      }
+      my_this.draw_ob.revalue_ivs(my_this.data, my_this.data.pl_filt);
+      const str32 = my_this.draw_ob.str_i32bit;
+      if (my_this.verbose_ob.verbose >= 2) {
+        PRINT_N(1, " --- We will show you reverse buffer. onm03=" + onm03 + ", target = " + event.target.value);
+        PRINT_N(1, " buys.vs = [" + my_this.data.buys.vs.slice(0,16).join(",") + "]"); 
+        PRINT_N(1, " buys.ivs = [" + my_this.data.buys.ivs.slice(0,16).join(",") + "]");
+        PRINT_N(1, " buffers.buys.ivs = [" + my_this.draw_ob.buffers.buys.ivs.subarray(0,4).join(",") + "]");
+        PRINT_N(1, (" buffers.buys.ivs = [" + str32(my_this.draw_ob.buffers.buys.ivs,0) + "||" + 
+                                             str32(my_this.draw_ob.buffers.buys.ivs,1) + "||" + 
+                                             str32(my_this.draw_ob.buffers.buys.ivs,2) + "||" + 
+                                             str32(my_this.draw_ob.buffers.buys.ivs,3) + "]")   );
+
+
+      }
+      if (my_this.draw_ob.buffers.uniform_buffer !== null) { my_this.call_plot(); }
     }
     PRINT_N(-5, "installing change.");
     this.formDiv.f_input_participant_target.addEventListener('change',Changer);
+    Changer({'target':{'value':'All'}});
   }
   configure_algo_data() {
     const PRINT_N = printer.my_printer(this.verbose_ob, "ob.js->configure_algo_data()");
@@ -506,9 +532,9 @@ class obwidget {
       // Implement Auto Widgth later
       //this.widgetDiv.style.width = this.data.width === 'auto' ? '100%' : `${this.width}px`;
       this.formDiv.style.left = 0 + 'px';
-      this.formDiv.style.top = 0 + 'px';
+      this.formDiv.style.top = default_form_data.form_top + 'px';
       this.formDiv.setAttribute('left', 0 + 'px');
-      this.formDiv.setAttribute('top', 0 + 'px');
+      this.formDiv.setAttribute('top', default_form_data.form_top + 'px');
       this.formDiv.style.width = (default_form_data.form_width) + 'px';
       this.formDiv.setAttribute('width', (default_form_data.form_width) + 'px');
       this.formDiv.style.height = Math.floor(default_form_data.form_height) + 'px'; 
@@ -597,7 +623,7 @@ class obwidget {
       if (!(this.data.width)) {
         PRINT_N(0, "ERROR configureWidgetGPU - this.data does not have width configured yet."); debugger;
       }
-      this.margins =  {'left': Math.floor(this.data.width * .35), 'top': Math.floor(this.data.height)*.3, 'bottom': Math.floor(this.data.height)*.7, itm:.1, 'right':Math.floor(this.data.width*.2) }
+      this.margins =  {'left': Math.floor(this.data.width * .35), 'top': Math.floor(this.data.height)*.2, 'bottom': Math.floor(this.data.height)*.7, itm:.1, 'right':Math.floor(this.data.width*.2) }
 
       this.configureForm();
 
@@ -609,12 +635,17 @@ class obwidget {
       this.widgetDiv.style.justifyContent = 'center';
       this.widgetDiv.style.alignItems = 'center';
       this.widgetDiv.setAttribute('z-level',0);
+      this.widgetDiv.draw_top = (default_form_data.form_top) + (default_form_data.form_height);
+      this.widgetDiv.style.top = this.widgetDiv.draw_top + 'px'; this.widgetDiv.setAttribute('top', this.widgetDiv.draw_top + 'px');
       // Implement Auto Widgth later
       //this.widgetDiv.style.width = this.data.width === 'auto' ? '100%' : `${this.width}px`;
-      this.widgetDiv.style.width = (this.data.width + this.margins.left) + 'px';
-      this.widgetDiv.style.height = Math.floor(this.data.height + this.data.text_win_height + this.margins.top + this.margins.bottom) + 'px'; 
-      this.widgetDiv.setAttribute('height',(this.data.height + this.margins.top + this.margins.bottom) + 'px');
-      this.widgetDiv.setAttribute('width', (this.data.width  + this.margins.left) + 'px');
+      const widget_width = Math.floor(this.data.width + this.margins.left + this.margins.right);
+      this.widgetDiv.style.width = (widget_width) + 'px';
+      const widget_height =  Math.floor(this.data.height + this.data.text_win_height + 
+         this.margins.top + this.margins.bottom); 
+      this.widgetDiv.style.height = widget_height + 'px'; 
+      this.widgetDiv.setAttribute('height',(widget_height) + 'px');
+      this.widgetDiv.setAttribute('width', (widget_width) + 'px');
       // BACKGROUND -- Set to BLACK for REGL plot
       this.widgetDiv.style.background = 'var(--jp-layout-color0)';
       this.el.appendChild(this.widgetDiv);
@@ -639,6 +670,7 @@ class obwidget {
       this.textDiv.setAttribute('height',(this.data.text_win_height) + 'px');
       this.textDiv.setAttribute('width', (this.data.width) + 'px');
       this.widgetDiv.appendChild(this.textDiv); 
+      this.widgetDiv.draw_top = this.margins.top;
       //this.count_widgettext = 0;
       PRINT_N(1, "obwidget->class->render() generating canvasDiv.");
       // D3 Might not work given the challenges of selection.  But Ideally 
@@ -648,7 +680,7 @@ class obwidget {
       //this.canvasDiv.style.top = (debug_button_heught) + 'px';
       //this.canvasDiv.setAttribute('top', (debug_button_height) + 'px');
       //
-      this.canvasDiv.style.top = this.margins.top + 'px';  this.canvasDiv.style.left = this.margins.left + 'px';
+      this.canvasDiv.style.top = this.widgetDiv.draw_top +  'px';  this.canvasDiv.style.left = this.margins.left + 'px';
       this.canvasDiv.setAttribute('id', 'canvasDiv' + this.randomStr);
       this.canvasDiv.setAttribute('height',this.data.height + 'px');
       this.canvasDiv.setAttribute('width', Math.floor(this.data.width + this.margins.right + this.data.bar_width) + 'px');
@@ -869,18 +901,18 @@ class obwidget {
   }
   add_time_slider_div() {
     this.time_slider_div = this.add_me_widget_div('time_slider_div',this.widgetDiv,'absolute','0',
-        Math.floor(this.margins.top + this.data.height + .7*this.margins.bottom), this.margins.left,
+        Math.floor(this.widgetDiv.draw_top + this.data.height + .7*this.margins.bottom), this.margins.left,
         slider_pixels, //Math.floor((1.0/5.0)*this.margins.top), 
         this.data.width);
   }
   add_unit_slider_div() {
     this.unit_slider_div = this.add_me_widget_div('unit_slider_div',this.widgetDiv,'absolute','0',
-       Math.floor((3.0/7.0)*this.margins.top), this.margins.left,
+       Math.floor(this.widgetDiv.draw_top - (4.0/7.0)*this.margins.top), this.margins.left,
        slider_pixels, this.data.width);
   }
   add_price_slider_div() {
     this.price_slider_div = this.add_me_widget_div('price_slider_div',this.widgetDiv,'absolute','0',
-        this.margins.top, Math.floor(.23 * this.margins.left),
+        this.widgetDiv.draw_top, Math.floor(.23 * this.margins.left),
         this.data.height, slider_pixels); //Math.floor(.15  * this.margins.left));
     //this.price_slider_div = document.createElement('div');
     //this.price_slider_div.setAttribute('id', "price_slider_div" + this.randomStr);
@@ -913,7 +945,7 @@ class obwidget {
   }
   add_time_axis_div() {
      const x2wid = xwid * 2;
-     this.time_axis_div = this.add_me_widget_div('time_axis_div',this.widgetDiv,'absolute','0', (this.margins.top + this.data.height), this.margins.left-xwid,
+     this.time_axis_div = this.add_me_widget_div('time_axis_div',this.widgetDiv,'absolute','0', (this.widgetDiv.draw_top + this.data.height), this.margins.left-xwid,
       this.margins.bottom, this.data.width+x2wid);
      const hline_y = Math.floor(this.margins.bottom * hline_effect);
      const tick_s = 30;
@@ -1045,7 +1077,7 @@ class obwidget {
   }
 
   add_price_axis_div() {
-     this.price_axis_div = this.add_me_widget_div('price_axis_div',this.widgetDiv,'absolute','0', (this.margins.top - priceFontWid), 0,
+     this.price_axis_div = this.add_me_widget_div('price_axis_div',this.widgetDiv,'absolute','0', (this.widgetDiv.draw_top - priceFontWid), 0,
          this.data.height + priceFontWid*10, this.margins.left);
      const pwid = this.margins.left;
      const hline_x = Math.floor(this.margins.left * vline_effect);
@@ -1364,11 +1396,11 @@ class obwidget {
     return(await this.draw_ob.get_device_buffer(this.gpu_pipeline, this.gpu_pipeline.device_nbbo_buffers.time));
   }
   create_mouse_svg() {
-   const mouse_text_height = Math.floor( (1.0/3.0) * this.margins.top);
+   const mouse_text_height = Math.floor( (1.0/6.0) * this.margins.top);
    const mouse_text_width = Math.floor(.7 * this.data.width);
    const my_this = this;
    this.mouse_text_div = this.add_me_widget_div('mouse_text_div',
-      this.widgetDiv,'absolute','0', Math.floor(this.margins.top-mouse_text_height), 
+      this.widgetDiv,'absolute','0', Math.floor(mouse_text_height), 
       Math.floor( this.margins.left +  (this.data.width-mouse_text_width)), mouse_text_height, (mouse_text_width));
    this.widgetDiv.appendChild(this.mouse_text_div);
    let nsvg = document.createElementNS(this.svgns,'svg');  
@@ -1793,19 +1825,19 @@ class obwidget {
       const pretty_num = my_this.pretty_num;
       if (my_this.bardr === null) { return(-1); }
       if ((event.target !== my_this.svg_bars) && (!my_this.svg_bars.contains(event.target))) {
-        PRINT_N(1, "Weird, touch_f called target = " + event.target + " but my_this.canvas_bars is " + my_this.canvas_bars);
+        DEBUG && PRINT_N(1, "Weird, touch_f called target = " + event.target + " but my_this.canvas_bars is " + my_this.canvas_bars);
         return(-1);
       }
       const locX = event.offsetX; const locY = event.offsetY;
       if ((locY < 0) || (locY > my_this.data.height) || (locX < 0) || (locX > my_this.data.bar_width)) { 
-        PRINT_N(1, "Hey warning, event.target = " + event.target);
-        PRINT_N(1, " locX=" + locX + ", locY = " + locY);
+        DEBUG && PRINT_N(1, "Hey warning, event.target = " + event.target);
+        DEBUG && PRINT_N(1, " locX=" + locX + ", locY = " + locY);
         clear_f(event); 
         return(-1); 
       }
       const find_p = my_this.data.pmax - (my_this.data.pmax-my_this.data.pmin) * locY / my_this.data.height;
       const rt = bars.seek_near(my_this.bardr, locX, locY, my_this.data.pmin, my_this.data.pmax, my_this.data.height);
-      PRINT_N(1, "::: find_p=" + find_p + ", we have (locX,locY)=(" + locX + "," + locY + "), bi=" + rt.b_near_pi + ", si=" + rt.s_near_pi);
+      DEBUG && PRINT_N(4, "::: find_p=" + find_p + ", we have (locX,locY)=(" + locX + "," + locY + "), bi=" + rt.b_near_pi + ", si=" + rt.s_near_pi);
       //if ((rt.b_near_pi >=0) || (rt.s_near_pi >= 0)) {
       //  PRINT_N(1, "Hey: touch_f: we see your movement here. ");  debugger;
       //}
