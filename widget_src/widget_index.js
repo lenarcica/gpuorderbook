@@ -60,7 +60,7 @@ async function async_gpu_render({ model, el }) {
     PRINT_N(0, "widget_index.js()  My Widget failed to generate.");
      debugger;
   }
-  if (!(my_widget.gpu_pipeline)) {
+  if ((!(!(my_widget))) && (!(my_widget.gpu_pipeline))) {
     PRINT_N(0, "widget_index.js -- gpu_pipeline does not exist: launching my_widget.render()");
     try {
       let properties = {};
