@@ -6,29 +6,34 @@ const debug_button_height = 75; const debug_button_width = 150;
 //
 // Our goal is to add my_this.to north of widget
 function configureDebugButton(my_this) {
-      console.log("glwidget->class->configureDebugButton() initiate");
-      console.log("rrr glwidget->class() Declaring and setting DEFAULT Jupyter DIV (name=" 
-         + my_this.randomDIVNAME+ ") location [w,h]=[" + my_this.width + "," + my_this.height + "]");
-      console.log("rrr glwidget -- Declaring a buttonDiv");
-      if (!(!(my_this.buttonDiv))) {
-        console.log("obwidget->configureDebugButton  we have buttonDiv found");
-        return(1);
-      }
-      const draw_ob = my_this.draw_ob;
-      my_this.buttonDiv = document.createElement('div');
-      my_this.buttonDiv.setAttribute('id', "buttonDiv" + my_this.randomStr);
-      my_this.buttonDiv.style.position = 'relative';  
-      my_this.buttonDiv.style.display = 'flex';
-      my_this.buttonDiv.style.flexDirection = 'column';
-      my_this.buttonDiv.style.justifyContent = 'left';
-      my_this.buttonDiv.style.alignItems = 'top';
-      my_this.buttonDiv.style.width = my_this.width === 'auto' ? '100%' : `${my_this.width}px`;
-      my_this.buttonDiv.style.height = (debug_button_height) + 'px'; 
-      my_this.buttonDiv.setAttribute('height',(debug_button_height) + 'px');
-      my_this.buttonDiv.setAttribute('width', debug_button_width + 'px');
-      my_this.buttonDiv.style.background = 'var(--jp-layout-color0)';
-      my_this.el.appendChild(my_this.buttonDiv);
-      console.log("graph_plot->class-> it is time for debug_button");
+  console.log("Start Debug Button.");
+  if ((!(my_this)) || (!(my_this.printer)) || (!(my_this.printer.make_print_n))) {
+    console.log("ERROR configureDebugButton: what went wrong with printer?"); debugger;
+  }
+  const PRINT_N = my_this.printer.make_print_n(my_this.verbose_ob, "debug.js->configureDebugButton(): ");
+  DEBUG && PRINT_N(1, "glwidget->class->configureDebugButton() initiate");
+  DEBUG && PRINT_N(1, "rrr glwidget->class() Declaring and setting DEFAULT Jupyter DIV (nameStr=" 
+         + my_this.randomStr+ ") location [w,h]=[" + my_this.width + "," + my_this.height + "]");
+  DEBUG && PRINT_N(1, "rrr glwidget -- Declaring a buttonDiv");
+  if (!(!(my_this.buttonDiv))) {
+    console.log("obwidget->configureDebugButton  we have buttonDiv found");
+    return(1);
+  }
+  const draw_ob = my_this.draw_ob;
+  my_this.buttonDiv = document.createElement('div');
+  my_this.buttonDiv.setAttribute('id', "buttonDiv" + my_this.randomStr);
+  my_this.buttonDiv.style.position = 'relative';  
+  my_this.buttonDiv.style.display = 'flex';
+  my_this.buttonDiv.style.flexDirection = 'column';
+  my_this.buttonDiv.style.justifyContent = 'left';
+  my_this.buttonDiv.style.alignItems = 'top';
+  my_this.buttonDiv.style.width = my_this.width === 'auto' ? '100%' : `${my_this.width}px`;
+  my_this.buttonDiv.style.height = (debug_button_height) + 'px'; 
+  my_this.buttonDiv.setAttribute('height',(debug_button_height) + 'px');
+  my_this.buttonDiv.setAttribute('width', debug_button_width + 'px');
+  my_this.buttonDiv.style.background = 'var(--jp-layout-color0)';
+  my_this.el.appendChild(my_this.buttonDiv);
+  DEBUG && PRINT_N(1, "::: it is time for debug_button");
 
       my_this.debug_button = document.createElement('button');
       my_this.debug_button.style.height = '75' + 'px'; my_this.debug_button.style.width = '150' + 'px';
@@ -110,7 +115,8 @@ function configureDebugButton(my_this) {
         in_this=my_this;  my_this.call_plot();
         console.log("graphing:::call_plot_button clicked.  call_lot was called");
       });
-      my_this.buttonDiv.appendChild(my_this.reset_button);
+  my_this.buttonDiv.appendChild(my_this.reset_button);
+  DEBUG && PRINT_N(1, ":: reset button included and now Debug Button Install over.");
 }   
 
 exports = {"configureDebugButton":configureDebugButton, "debug_button_height":debug_button_height, "debug_button_width":debug_button_width};

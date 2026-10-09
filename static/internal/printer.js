@@ -22,6 +22,12 @@ const make_print_n = function(verbose_ob, stt) {
    if (typeof(verbose_ob) != 'object') {
      console.log("make_print_n: error, verbose_ob is not an object."); return(null);
    } 
+   if (typeof(stt) !== 'string') {
+     console.log("make_print_n, error typeof(stt) = " + typeof(stt)); debugger;
+   }
+   if ((verbose === null)  || (verbose === undefined)) {
+     console.log("make_print_n: Error  verbose is some invalid type!."); debugger;
+   }
    if (!('s' in verbose_ob)) {
      console.log("make_print_n: Error, verbose_ob has no s array.");
    } else if (!(Array.isArray(verbose_ob.s))) {

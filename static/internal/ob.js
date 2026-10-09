@@ -50,7 +50,7 @@ const default_height = 700;  const default_width = 600; const default_bar_width 
 // Note that canvas_pixels cannot exceek 8000
 var canvas_pixels = 2; var height_canvas = default_height; var width_canvas = default_width;
 var canvas_tweak = 0; // Incase extra tweak to put CANVAS on SVG necessary
-const is_numeric = printer.is_numeric; const is_positive_numeric = printer.is_numeric;
+const is_numeric = printer.is_numeric; const is_positive_numeric = (x) => (printer.is_numeric(x) && (x > 0));
 const xwid = 5; const hline_effect = .15; const ywid = 5; const vline_effect = .15;
 const slider_pixels = 20; const price_delta = 1.5;
 const priceFontWid = 18;
@@ -136,7 +136,7 @@ const run_algo = function(my_this, PRINT_N) {
 
 //export class obwidget {
 class obwidget {
-  data = {...demo_data.demo_data};
+  data = {...demo_data.demo_data};  printer = printer;
   gpu_pipeline = null; debug_button=null; verbose_ob=null;
   renderer = null; device=null; adapter=null; widgetDiv=null; formDiv=null;
   count_renders = 0; draw_ob = draw_ob; svgns = svgns; svg_ob = svg_ob; pretty_num = pretty_num; time_range_dict = [0,1];
@@ -150,14 +150,22 @@ class obwidget {
     this.verbose_ob = {'s':[], 'verbose':this.verbose};
     this.oad_verbose_ob = {'s':[], 'verbose':this.verbose-3};
     const vstr = "obwidget()";
-    this.PRINT_N = printer.my_printer(this.verbose_ob, vstr);
+    this.PRINT_N = printer.make_print_n(this.verbose_ob, vstr);
+    const PRINT_N = this.PRINT_N;
     DEBUG && this.PRINT_N(1, "obwidget() -- constructor called. -- verbose = " + (this.verbose));
     DEBUG && this.PRINT_N(0, "  We have initiated obwidget with verbose = " + this.verbose);
     DEBUG && this.PRINT_N(0, " We completed constructor.");
     this.setupDefaults();
     this.el = el; this.model = model;  this.draw_ob.verbose_ob = this.verbose_ob;
     const in_data = this.model.get('data');
-    this.algo_data = {'kalgo': (is_numeric(model.get('kalgo')) ? model.get('kalgo') : 0),
+    if (!(!(in_data))) {  
+      this.height = ((!(!(in_data.height))) && (is_numeric(in_data.height))) ? in_data.height : 600;
+      this.weight = ((!(!(in_data.width))) && (is_numeric(in_data.width))) ? in_data.width : 400; 
+    }
+    DEBUG && this.PRINT_N(1, " Setting algo data if it exists.");
+    const my_this = this;
+    try {
+      this.algo_data = {'kalgo': (is_numeric(model.get('kalgo')) ? model.get('kalgo') : 0),
                  'v_d': ((!(!(model.get('v_d')))) ? model.get('v_d') : [1,5,10]),
                  'v_w': ((!(!(model.get('v_w')))) ? model.get('v_w') : []),
                  'w_sum_q': (is_numeric(model.get('w_sum_q')) ? model.get('w_sum_q') : 0),
@@ -168,16 +176,24 @@ class obwidget {
                  'w_atp' :  (is_numeric(model.get('w_atq')) ? model.get('w_atq') : 0),
                  'w_crit_pi' : ((is_numeric(model.get('w_crit_pi'))) ? model.get('w_crit_pi') : 0),
                  'w_crit_p' : ((is_numeric(model.get('w_crit_p'))) ? model.get('w_crit_p') : 0),
-                 'verbose': this.verbose };
-    // Note time_min/time_max taken from object
-    if (!(this.debug_button)) {
-      debug_code.configureDebugButton(this);
+                 'verbose': this.verbose_ob.verbose };
+    } catch {
+      PRINT_N(-6, "Error trying to execute Model Get."); debugger;
     }
+    // Note time_min/time_max taken from object
+    DEBUG && this.PRINT_N(1, " Setting debug button.");
+    DEBUG && PRINT_N(1, " Here is debug Button: " + this.debug_button);
+    if ((this.debug_button === undefined) || (this.debug_button === null) || (!(this.debug_button))) {
+      DEBUG && PRINT_N(1, ":: Installing Debug Buttons.");
+      debug_code.configureDebugButton(my_this);
+    }
+    DEBUG && PRINT_N(1, ":: about to install in_data from what we have sequenced in model data.");
     this.configureData(in_data, this.model);
     this.draw_ob = draw_ob;
   }
   configureData(in_data, model) {
     const PRINT_N = printer.my_printer(this.verbose_ob, "ob.js->configureData()");
+    DEBUG && PRINT_N(1, " Initiate configureData");
     if (!(!(in_data))) { 
       this.data = in_data; PRINT_N(1, ": data given to configureData from input"); 
       if (!(this.data.data_type)) { this.data.data_type = "User supplied data"; }
@@ -190,33 +206,38 @@ class obwidget {
           (demo_data.demo_data.data_type === null) ? " IS NULL " : demo_data.demo_data.data_type)
       this.data = demo_data.demo_data;
     }
-    if (!(this.data)) {
-      PRINT_N(0, ": ERROR data is still null."); debugger;
+    DEBUG && PRINT_N(1, " Testing data for non Null ness.");
+    if ((this.data === undefined) || (this.data === null) || (!(this.data))) {
+      PRINT_N(0, ": ERROR data is still null.  This should trigger an Error."); debugger;
     }
-    if (!(this.data.data_type)) {
+    if ((this.data.data_type === undefined) || (this.data.data_type === null) || (!(this.data.data_type))) {
       PRINT_N(0, "ERROR Data.data_type is still undefined"); debugger;
     }
-    if (!(is_numeric(this.data.tmin))) {
+    if ((this.data.tmin === undefined) || (!(is_numeric(this.data.tmin)))) {
       PRINT_N(-1, "ERROR configureData has not been populated"); debugger;
     }
-    if ( (!(this.data.buys)) || (!(this.data.buys.open)) || (this.data.buys.open.length <= 0)) {
-      this.data.buys = null;
+    if ( (this.data.buys === undefined) || (!(this.data.buys)) || (this.data.buys.open===undefined) || 
+         (!(this.data.buys.open)) || (this.data.buys.open.length <= 0)) {
+      PRINT_N(1, " Invalid this.data.buys setting null. "); this.data.buys = null;
     }
 
-    if ( (!(this.data.sells)) || (!(this.data.sells.open)) || (this.data.sells.open.length <= 0)) {
-      this.data.sells = null;
+    if ( (!(this.data.sells)) || (this.data.sells ===undefined) || (!(this.data.sells.open)) || (this.data.sells.open.length <= 0)) {
+      PRINT_N(1, " Invalid this.data.sells setting null"); this.data.sells = null;
     }
-    if ( (!(this.data.nbbo)) || (!(this.data.nbbo.time)) || (this.data.nbbo.time.length <= 0)) {
-      this.data.nbbo = null;
+    if ( (this.data.nbbo === undefined) || (!(this.data.nbbo)) || (!(this.data.nbbo.time)) || (this.data.nbbo.time.length <= 0)) {
+      PRINT_N(1, " Invalid this.data.nbbo setting null"); this.data.nbbo = null;
     }
     if ( (!(this.data.trades)) || (!(this.data.trades.time)) || (this.data.trades.time.length <= 0)) {
       this.data.trades = null;
     }
+    // Making Data own a copy of verbose_ob.
+    if ( (!(!(this.data)))) { this.data.verbose_ob = this.verbose_ob; }
 
-    if (is_positive_numeric(this.data.height)) { this.data.height = Math.floor(this.data.height) } else { this.data.height = demo_data.height }
-    if (is_positive_numeric(this.data.width)) { this.data.width = Math.floor(this.data.width) } else { this.data.width = demo_data.width }
+    // Setting appreciable height, width, bar width.
+    if (is_positive_numeric(this.data.height)) { this.data.height = Math.floor(this.data.height) } else { PRINT_N(0, " invalid data.height."); this.data.height = demo_data.height }
+    if (is_positive_numeric(this.data.width)) { this.data.width = Math.floor(this.data.width) } else { PRINT_N(0, " invalid data width."); this.data.width = demo_data.width }
     if (is_positive_numeric(this.data.bar_width)) { this.data.bar_width = Math.floor(this.data.bar_width) 
-    } else { this.data.bar_width = Math.floor(this.data.width * .35); }
+    } else { PRINT_N(0, ": invalid data bar width."); this.data.bar_width = Math.floor(this.data.width * .35); }
     if ((!(!(this.data.text_win_height))) && (is_positive_numeric(this.data.text_win_height))) { 
       this.data.text_win_height = Math.floor(this.data.text_win_height) 
     } else { 
@@ -790,7 +811,7 @@ class obwidget {
        this.draw_ob.blank_main(this.canvas_gpu, this.device);
   }
   async render(properties) {
-    const PRINT_N = this.PRINT_N;
+    const PRINT_N = this.printer.make_print_n(this.verbose_ob, "ob.js->async_render()::: "); 
     
     if (!(PRINT_N)) {
       console.log("render -- issues, PRINT_N not found.");
@@ -798,7 +819,7 @@ class obwidget {
     }
     PRINT_N(1,"rrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr");
     PRINT_N(1,"rrr gpuwidget.js -> await render(count_renders=" + this.count_renders + ") -- Initiate -- properties is developing");
-    PRINT_N(1,Object.keys(properties));
+    PRINT_N(1,"rrr: object.keys(properties) == [" + Object.keys(properties).join(",") + "]");
     let here_this = this;
     PRINT_N(1,"rrr gpuwidget.js -- calling setupWidget(properties)");
     if (!(this.canvas_gpu)) {  this.setupWidget(properties); }
@@ -816,21 +837,21 @@ class obwidget {
       };
       PRINT_N(1,"rrr -- windowGPUWidget was given this.createRenderer, now count_renders = " + this.count_renders);
     } else {
-      console.log("rrr --- ELSE: window.GLwidget is not null");
+      DEBUG && PRINT_N(1, "rrr --- ELSE: window.GLwidget is not null");
       properties.text = "rrr gpuwidget.js->await render(): window.GPUwidget exists?";
       await here_this.createRenderer(properties);
     }
     if (!(this.device)) {
-      PRINT_N(0, "ERROR - aync render(properties) still calling create Renderer one more time.");
+      PRINT_N(-6, "ERROR - aync render(properties) still calling create Renderer one more time.");
       here_this.renderer = await this.createRenderer(properties);
       if ( (!(this.device)) || (this.renderer === null) || (this.renderer == undefined)) {
-        PRINT_N(0, "ERROR - async render(properties) with device is still non existant");
+        PRINT_N(-6, "ERROR - async render(properties) with device is still non existant");
         debugger;
       }
     }
     PRINT_N(1,"rrr -- async render -- now triggering a possible requestAnimationFrame(), count_renders = " + this.count_renders);
     window.requestAnimationFrame(() => {
-      PRINT_N("rrr gpuwidget.js->await render(count_renders=" + this.count_renders + ") -- requestAnimationFrame() called -- inserting renderer.");
+      DEBUG && PRINT_N(3, "rrr gpuwidget.js->await render(count_renders=" + this.count_renders + ") -- requestAnimationFrame() called -- inserting renderer.");
       const initialOptions = {
         renderer: window.ob_gpu_widget.renderer,
         canvas: here_this.canvas,
