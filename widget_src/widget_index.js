@@ -52,15 +52,18 @@ async function async_gpu_render({ model, el }) {
       //graph_vertices: Numpy2D('uint32')
       //}),
     });
+    PRINT_N(0,"--- Successfully received my_widget from obwidget.");
   } catch {
-    PRINT_N(1, "widget_index.js -- gpu render failed");
+    PRINT_N(-6, "widget_index.js -- my_widget not received.");
     debugger;
   }
   if (!(my_widget)) {
-    PRINT_N(0, "widget_index.js()  My Widget failed to generate.");
-     debugger;
+    PRINT_N(-6, "widget_index.js()  My Widget failed to generate.");
+    debugger;
   }
-  if ((!(!(my_widget))) && (!(my_widget.gpu_pipeline))) {
+  if ((!(!(my_widget))) && (!(!(my_widget.data.pause_render))) && (my_widget.data.pause_render != false)) {
+    my_widget.keep_pause_render({});
+  } else if ((!(!(my_widget))) && (!(my_widget.gpu_pipeline))) {
     PRINT_N(0, "widget_index.js -- gpu_pipeline does not exist: launching my_widget.render()");
     try {
       let properties = {};
@@ -69,6 +72,10 @@ async function async_gpu_render({ model, el }) {
       PRINT_N(0, "widget_index.js -- gpu_pipeline but render didn't get called.");
       debugger;
     }
+  } else if ((my_widget === null) || (my_widget === undefined)) {
+    PRINT_N(-6, "::: at this stage on widget_index.js we have my_widget is very null.");  debugger;
+  } else if ((my_widget.call_plot_again === undefined) || (typeof(my_widget.call_plot_again !== 'function'))) {
+    PRINT_N(-6, "::: Some error what is wrong with call plot again?"); debugger;
   } else {
     PRINT_N(0,"widget_index.js -- gpu_pipeline -- calling my_widget.gpu_pipeline.call_plot_again()");
     my_widget.call_plot_again({});
