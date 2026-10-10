@@ -158,7 +158,7 @@ function OB_generate_gpu_pipeline(gpu_pipeline, gpu_context, adapter, device, a_
     DEBUG && PRINT_N(1, " Going towards gnenerate piepline.");
     //const module_buys = generate_gpu_module(device, draw_buys_module, verbose);
     //const module_sells= generate_gpu_module(device, draw_sells_module, verbose);
-    PRINT_N(1, "-- now generating pipeline");
+    DEBUG && PRINT_N(1, "-- now generating pipeline");
     gpu_pipeline = {
        device:device, adapter:adapter,
        module_nbbo: module_nbbo, 
@@ -178,23 +178,23 @@ function OB_generate_gpu_pipeline(gpu_pipeline, gpu_context, adapter, device, a_
     } 
     //console.log(" draw_ob.js here we are.");
     //debugger;
-    PRINT_N(1, "update uniform window device buffer");
+    DEBUG && PRINT_N(1, "update uniform window device buffer");
     if (!(a_obwidget.data)) {
       PRINT_N(-1, "ERROR OB_generate_gpu_pipeline, data is not populated"); debugger;
     } else if (!is_numeric(a_obwidget.going.tmin)) {
       PRINT_N(-1, "ERROR OB_generate_gpu_pipeline, data does not contain tmin?"); debugger;
     }
     update_uniform_int = update_uniform_window_device_buffer(device, a_obwidget.data, 0, gpu_pipeline)
-    PRINT_N(1, "updating the vertex buffers");
+    DEBUG && PRINT_N(1, "updating the vertex buffers");
     populate_device_verts_buffers(device, gpu_pipeline);
-    PRINT_N(1, "update the device data buffers: running populate_device_data_buffers.");
+    DEBUG && PRINT_N(1, "update the device data buffers: running populate_device_data_buffers.");
     populate_device_data_buffers(device, gpu_pipeline);
     PRINT_N(1, "populate_device_data_buffers concluded.");
   } else {
-    PRINT_N(1, " -- don't need to re-initiate, material is here.");
+    DEBUG && PRINT_N(1, " -- don't need to re-initiate, material is here.");
     update_uniform_int = update_uniform_window_device_buffer(device, a_obwidget.data, 0, gpu_pipeline)
   }
-  PRINT_N(1, " OB_generate_gpu_pipeline:  returning gpu_pipeline.");
+  DEBUG && PRINT_N(1, " OB_generate_gpu_pipeline:  returning gpu_pipeline.");
   return(gpu_pipeline); 
 }
 
@@ -586,7 +586,7 @@ async function get_device_buffer(gpu_pipeline, a_device_buffer) {
     lengthBuffer = gpu_pipeline.buffers.trades.price.length; 
   }
   const PRINT_N = printer.make_print_n(gpu_pipeline.verbose, "draw_ob.js->get_device_buffer(" + fData + "): ");
-  PRINT_N(0, "  Begin looking for length " + lengthBuffer);
+  DEBUG && PRINT_N(1, "  Begin looking for length " + lengthBuffer);
   const commandEncoder = gpu_pipeline.device.createCommandEncoder();
   commandEncoder.copyBufferToBuffer(
         sourceBuffer, // Your original GPU buffer
@@ -634,7 +634,7 @@ function update_dynamic_uniform_window_device_buffer(device, gpu_pipeline) {
   return(1);
 }
 function update_uniform_window_device_buffer(device, data, bs01, gpu_pipeline) {
-  PRINT_N(3, "update_uniform_window_device_buffer called");
+  DEBUG && PRINT_N(3, "update_uniform_window_device_buffer called");
   if (!(data)) {
     PRINT_N(-1, "ERROR - update_uniform_window_device_buffer() error no data.");
     return(-1);
@@ -1203,8 +1203,8 @@ function ob_gpu_render(gpu_pipeline, do_plots) {
   //const node_pipeline = gpu_pipeline.node_pipeline; 
   //const edge_pipeline=gpu_pipeline.edge_pipeline;
   DEBUG && PRINT_N(3, "Create nbbo_bindgroup");
-  const nbb_bindgroup = create_nbbo_bindgroup(gpu_pipeline.device, gpu_pipeline,'nbb');
-  const nbo_bindgroup = create_nbbo_bindgroup(gpu_pipeline.device, gpu_pipeline,'nbo');
+  const nbb_bindgroup = (buffers.nbbo !== null) ? create_nbbo_bindgroup(gpu_pipeline.device, gpu_pipeline,'nbb') : null;
+  const nbo_bindgroup = (buffers.nbbo !== null) ? create_nbbo_bindgroup(gpu_pipeline.device, gpu_pipeline,'nbo') : null;
 
   // Note for ultra efficiency we are suppoed to create 3 bind groups, seems remarkably difficult.
   const bv_bindgroup =  (buffers.wp !== null) ? create_wp_bindgroup(gpu_pipeline.device, gpu_pipeline, "bv") : null;
@@ -1219,37 +1219,37 @@ function ob_gpu_render(gpu_pipeline, do_plots) {
   //const bv_bindgroup = ((false) && (buffers.wp !== null)) ? create_wp_bindgroup(gpu_pipeline.device, gpu_pipeline, "bv") : null;
   //const sv_bindgroup = ((false) && (buffers.wp !== null)) ? create_wp_bindgroup(gpu_pipeline.device, gpu_pipeline, "sv") : null; 
   DEBUG && PRINT_N(2, " creating buys_bindgroup.");
-  const buys_bindgroup = create_buys_bindgroup(gpu_pipeline.device, gpu_pipeline);
-  const sells_bindgroup = create_sells_bindgroup(gpu_pipeline.device, gpu_pipeline);
-  const trades_bindgroup = create_trades_bindgroup(gpu_pipeline.device, gpu_pipeline);
+  const buys_bindgroup = (buffers.buys !== null) ? create_buys_bindgroup(gpu_pipeline.device, gpu_pipeline) : null;
+  const sells_bindgroup = (buffers.sells !== null) ? create_sells_bindgroup(gpu_pipeline.device, gpu_pipeline) : null;
+  const trades_bindgroup = (buffers.trades !== null) ? create_trades_bindgroup(gpu_pipeline.device, gpu_pipeline) : null;
   DEBUG && PRINT_N(3, "create encoder Render pass from rpd"); 
   const render_pass = encoder.beginRenderPass(rpd);
   //update_uniform_bs01_device_buffer(device,0,gpu_pipeline);
   //console.log(" set pipeline with gpu_pipeline.nbbo_pipeline");
 
-  if (!(!(gpu_pipeline.buys_pipeline)) && (do_plots.do_quotes==true)) {
-  render_pass.setPipeline(gpu_pipeline.buys_pipeline);
-  render_pass.setBindGroup(1, buys_bindgroup);
-  render_pass.draw(msg_verts.length, buffers.buys.price.length);
+  if (!(!(gpu_pipeline.buys_pipeline)) && (do_plots.do_quotes==true) && (buffers.buys !== null)) {
+    render_pass.setPipeline(gpu_pipeline.buys_pipeline);
+    render_pass.setBindGroup(1, buys_bindgroup);
+    render_pass.draw(msg_verts.length, buffers.buys.price.length);
   }
-  if (!(!(gpu_pipeline.sells_pipeline)) && (do_plots.do_quotes==true)) {
+  if (!(!(gpu_pipeline.sells_pipeline)) && (do_plots.do_quotes==true) && (buffers.slles !== null)) {
   render_pass.setPipeline(gpu_pipeline.sells_pipeline);
   render_pass.setBindGroup(2, sells_bindgroup);
   render_pass.draw(msg_verts.length, buffers.sells.price.length);
   }
-  if (!(!(gpu_pipeline.nbb_pipeline)) && (do_plots.do_nbbo==true)) {
+  if (!(!(gpu_pipeline.nbb_pipeline)) && (do_plots.do_nbbo==true) && (buffers.nbbo !== null)) {
     render_pass.setPipeline(gpu_pipeline.nbb_pipeline);
     //console.log(" set bind group with nbbo bindgroup");
     render_pass.setBindGroup(0, nbb_bindgroup);
     //console.log(" call draw buffers.");
     render_pass.draw(nbbo_verts.length, buffers.nbbo.time.length-1);  // call our vertex shader 3 times (if function is (3))
   }
-  if (!(!(gpu_pipeline.nbo_pipeline)) && (do_plots.do_nbbo == true)) {
-  //console.log(" update to call bs01=1 buffers");
-  render_pass.setPipeline(gpu_pipeline.nbo_pipeline);
-  render_pass.setBindGroup(0, nbo_bindgroup);
-  DEBUG && PRINT_N(4, " Last Call, length [" + nbbo_verts.length + "," + buffers.nbbo.time.length + "]");
-  render_pass.draw(nbbo_verts.length, buffers.nbbo.time.length-1);  // call our vertex shader 3 times (if function is (3))
+  if (!(!(gpu_pipeline.nbo_pipeline)) && (do_plots.do_nbbo == true) && (buffers.nbbo !== null)) {
+    //console.log(" update to call bs01=1 buffers");
+    render_pass.setPipeline(gpu_pipeline.nbo_pipeline);
+    render_pass.setBindGroup(0, nbo_bindgroup);
+    DEBUG && PRINT_N(4, " Last Call, length [" + nbbo_verts.length + "," + buffers.nbbo.time.length + "]");
+    render_pass.draw(nbbo_verts.length, buffers.nbbo.time.length-1);  // call our vertex shader 3 times (if function is (3))
   }
   if ((buffers.wp !== null) && (buffers.wp.doplot=true) && (do_plots.do_wp==true)) {
     // We take bv pipeline and draw line if instructed.
@@ -1262,11 +1262,11 @@ function ob_gpu_render(gpu_pipeline, do_plots) {
     render_pass.draw(nbbo_verts.length, (buffers.wp.nn * buffers.wp.nk));  // call our vertex shader 3 times (if function is (3))
     buffers.wp.doplot = false;
   }
-  if ((true) && (!(!(gpu_pipeline.trades_pipeline))) && (do_plots.do_trades == true)) {
-  render_pass.setPipeline(gpu_pipeline.trades_pipeline);
-  render_pass.setBindGroup(3, trades_bindgroup);
-  render_pass.draw(triangle_verts_arrow.length, buffers.trades.price.length);
-  DEBUG && PRINT_N(6, "buffers.trades.price has length " + buffers.trades.price.length);
+  if ((buffers.trades !== null) && (!(!(gpu_pipeline.trades_pipeline))) && (do_plots.do_trades == true)) {
+    render_pass.setPipeline(gpu_pipeline.trades_pipeline);
+    render_pass.setBindGroup(3, trades_bindgroup);
+    render_pass.draw(triangle_verts_arrow.length, buffers.trades.price.length);
+    DEBUG && PRINT_N(6, "buffers.trades.price has length " + buffers.trades.price.length);
   }
   render_pass.end();
   DEBUG && PRINT_N(3, " Trying to finish commandBuffer.");

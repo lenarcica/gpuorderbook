@@ -287,7 +287,7 @@ const place_svg_ps = function(svg_svg, data, timeX, priceY, price_delta, wpfac, 
     } else if (prop_mo == null) { console.log("place_svg_ps: prop_mo=null");
     } else if (prop_mo.nText == null) { console.log("place_svg_ps: prop_mo.nText is undefined");
     }
-    console.log("place_svg_ps: We have undefined prop_mo?"); debugger;
+    PRINT_N(-6, "ERROR::: place_svg_ps: We have undefined prop_mo?"); debugger;
   }
   if ((new_ps === null) || (new_ps === undefined) || (new_ps.i === null) || (new_ps.i === undefined) || (new_ps.i === -1)) {
      past_ps = new_ps; 
@@ -356,8 +356,8 @@ const place_svg_ps = function(svg_svg, data, timeX, priceY, price_delta, wpfac, 
         lwp.setAttribute('d', lln); lwp.setAttribute('fill', 'none');
         //lwp.setAttribute('d', 'M ' + ltm + "," + lpwp + " H " + Math.floor(lntm)); 
       }
-      console.log("prop_mo: Successes on_fd should exit (" +(new_ps.bs01==0?"b":"s")+ on_fd + ",$" + on_wp + ").");
-      console.log(" -- tipText :" + prop_mo.tipText);
+      DEBUG && PRINT_N(2, "prop_mo: Successes on_fd should exit (" +(new_ps.bs01==0?"b":"s")+ on_fd + ",$" + on_wp + ").");
+      DEBUG && PRINT_N(2, " -- tipText :" + prop_mo.tipText);
       //debugger;
     } else {
       //const onk = new_ps.lev;  const nr = data.ps.nr; const nk = data.ps.nk;
@@ -825,15 +825,39 @@ const add_svg_mouse_over = function(svg_div,svg_svg, text_svg, data, text_width,
    past_nbbo_i = -1;
    const our_pd = price_delta;
    let open_i = [];
-   let srt_buys = data.buys.open.map((_,i)=>i);
-   srt_buys.sort((a,b) => { if (data.buys.price[a] == data.buys.price[b]) { return(data.buys.open[a]-data.buys.open[b]) } else { return(data.buys.price[a]-data.buys.price[b]) } })
-   let srt_sells = data.sells.open.map((_,i)=>i);
-   srt_sells.sort((a,b) => { if (data.sells.price[a] == data.sells.price[b]) { return(data.sells.open[a]-data.sells.open[b]) } else { return(data.sells.price[a]-data.sells.price[b]) } })
-   let srt_trades = data.trades.time.map((_,i)=>i);
-   srt_trades.sort((a,b) => { if (data.trades.time[a] == data.trades.time[b]) { return(data.trades.price[a]-data.trades.price[b]) } else { return(data.trades.time[a] - data.trades.time[b]) }});
+  
+   const bsort = function(a,b) {
+     if (data.buys.price[a] == data.buys.price[b]) { 
+       return(data.buys.open[a]-data.buys.open[b]) 
+     } else { 
+       return(data.buys.price[a]-data.buys.price[b]) 
+     } 
+   };
+   const srt_buys = ( ((data.buys === null) || (data.buys===undefined) || 
+                      (data.buys.open===undefined) || (data.buys.open.length <= 0)) ? [] : data.buys.open.map((_,i)=>i).sort(bsort));
 
-   let buy_price_bounds = [0, data.buys.length];
-   let sell_price_bounds = [0, data.sells.length]; let trade_bounds = [0, data.trades.length];
+   const ssort = function(a,b) {
+             if (data.sells.price[a] == data.sells.price[b]) { 
+               return(data.sells.open[a]-data.sells.open[b]) 
+             } else { 
+               return(data.sells.price[a]-data.sells.price[b]) }
+   };
+   const srt_sells = ( ((data.sells === null) || (data.sells===undefined) || 
+                      (data.sells.open===undefined) || (data.sells.open.length <= 0)) ? [] : data.sells.open.map((_,i)=>i).sort(ssort));
+
+    
+   const tsort = function(a,b) { 
+     if (data.trades.time[a] == data.trades.time[b]) { 
+       return(data.trades.price[a]-data.trades.price[b]) 
+     } else { 
+       return(data.trades.time[a] - data.trades.time[b]) 
+     }
+   };
+   const srt_trades = ( ((data.trades === undefined) || (data.trades===null) ||
+                        (data.trades.time === undefined) || (data.trades.time.length <= 0)) ? [] : data.trades.time.map((_,i)=>i).sort(tsort));
+   const buy_price_bounds = ((data.buys == null) || (data.buys===undefined)) ? [] : [0, data.buys.open.length];
+   const sell_price_bounds = ((data.buys===undefined) || (data.sells == null)) ? [] : [0, data.sells.open.length]; 
+   const trade_bounds = ((data.trades == null) || (data.trades==undefined)) ? [] : [0, data.trades.time.length];
    const f_binary_top = binary_top; const f_binary_bottom = binary_bottom; const f_current_nbbo_i = current_nbbo_i; const f_update_top = update_top;
    const f_update_bottom = update_bottom; const f_binary_nbbo_i = binary_nbbo_i 
    const copy_data = data;

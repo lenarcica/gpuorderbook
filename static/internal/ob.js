@@ -59,7 +59,7 @@ const buttons_left_loc = ['1000','1300'];
 
 
 async function WebGPU_GetAdapterAndDevice() {
-  const PRINT_N = printer.my_printer(default_verbose_ob, "ob.js->WebGPU_GetAdapterAndDevice(): ");
+  const PRINT_N = printer.make_print_n(default_verbose_ob, "ob.js->WebGPU_GetAdapterAndDevice(): ");
   PRINT_N(0,"obwidget.js -- Trying to achieve adapter");
   const adapter = await navigator.gpu?.requestAdapter();
   const device = await adapter?.requestDevice();
@@ -142,7 +142,7 @@ class obwidget {
   count_renders = 0; draw_ob = draw_ob; svgns = svgns; svg_ob = svg_ob; pretty_num = pretty_num; time_range_dict = [0,1];
   unique_prices = []; oad={}; algo_data = {}; ps = null;  bigmult = pretty_num.bigmult;  ord_algo=ord_algo;
   do_plots = {'do_nbbo':true,'do_trades':true,'do_quotes':true,'do_wp':true}; bars = bars;
-  bardr = null;
+  bardr = null; pause_render = false; 
   constructor({model, el}) {
     this.randomStr = (Math.random().toString(36).substring(2, 5) +
           Math.random().toString(36).substring(2, 5));
@@ -154,7 +154,7 @@ class obwidget {
     const PRINT_N = this.PRINT_N;
     DEBUG && this.PRINT_N(1, "obwidget() -- constructor called. -- verbose = " + (this.verbose));
     DEBUG && this.PRINT_N(0, "  We have initiated obwidget with verbose = " + this.verbose);
-    DEBUG && this.PRINT_N(0, " We completed constructor.");
+    DEBUG && this.PRINT_N(0, " We completed constructor.  Setting up Defaults.");
     this.setupDefaults();
     this.el = el; this.model = model;  this.draw_ob.verbose_ob = this.verbose_ob;
     const in_data = this.model.get('data');
@@ -180,19 +180,43 @@ class obwidget {
     } catch {
       PRINT_N(-6, "Error trying to execute Model Get."); debugger;
     }
+    DEBUG && PRINT_N(1, " Looking for pause_render"); 
+    const pause_render = (!(!(in_data)) && (in_data.pause_render !== undefined) && (in_data.pause_render !== null)) ? (!(!(in_data.pause_render))) : false;
+    my_this.pause_render = pause_render;
     // Note time_min/time_max taken from object
     DEBUG && this.PRINT_N(1, " Setting debug button.");
     DEBUG && PRINT_N(1, " Here is debug Button: " + this.debug_button);
     if ((this.debug_button === undefined) || (this.debug_button === null) || (!(this.debug_button))) {
-      DEBUG && PRINT_N(1, ":: Installing Debug Buttons.");
-      debug_code.configureDebugButton(my_this);
+      DEBUG && PRINT_N(1, ":: Running Debug Code configure Default Buttons.");
+      debug_code.configureDefaultButtons(my_this);
     }
     DEBUG && PRINT_N(1, ":: about to install in_data from what we have sequenced in model data.");
     this.configureData(in_data, this.model);
-    this.draw_ob = draw_ob;
+    DEBUG && PRINT_N(1, ":: Clear from configureData,  Now testing to pause render flag.  my_this.pause_render=" + my_this.pause_render);
+    if ((my_this.pause_render !== undefined) && (!(!(my_this.pause_render))) && (my_this.pause_render == true) ) {
+      DEBUG && PRINT_N(1, ":: Will execute configure_pause_render");
+      my_this.configure_pause_render();
+    } else {
+      DEBUG && PRINT_N(1, ":: We are ready to configure Algorithm Data.");
+      this.configure_algo_data();
+    }
+    DEBUG && PRINT_N(1, "We conclude constructor.");
+  }
+  configure_pause_render() {
+    const my_this = this;
+    const PRINT_N = my_this.printer.make_print_n(my_this.verbose_ob, "ob.js->configure_pause_render() -- I don't think we need to do anything.");
+    DEBUG && PRINT_N(1, " --- Non working function. -- We can now return");
+    return(1);
+  }
+  this_run_algo() {
+    const my_this = this;
+    const PRINT_N = my_this.printer.make_print_n(my_this.verbose_ob, "ob.js->internal run_algo()");
+    PRINT_N(2, "Running Orderbook Algorithm");
+    run_algo(my_this, PRINT_N);
+    PRINT_N(2, " --- Concluded Running Algorithm.");
   }
   configureData(in_data, model) {
-    const PRINT_N = printer.my_printer(this.verbose_ob, "ob.js->configureData()");
+    const PRINT_N = printer.make_print_n(this.verbose_ob, "ob.js->configureData()");
     DEBUG && PRINT_N(1, " Initiate configureData");
     if (!(!(in_data))) { 
       this.data = in_data; PRINT_N(1, ": data given to configureData from input"); 
@@ -279,12 +303,11 @@ class obwidget {
     DEBUG && PRINT_N(1," -- We are done with initial work.");
     DEBUG && PRINT_N(1," --  this.data.height is " + this.data.height + ", going to algo_data");
     // Follow through with setting up data for algo.
-    this.configure_algo_data();
-    DEBUG && PRINT_N(1," -- we have done the algo data.");
+    DEBUG && PRINT_N(1," -- We have determined Basic Data settings.");
   }
   configure_form_pt() {
     const my_this = this;
-    console.log("configure_form_pt() initialize.");
+    DEBUG && console.log("configure_form_pt() initialize.");
     if ((this.formDiv === undefined) || (this.formDiv === null)) {
       console.log("configure_form_pt() can't work with this.formDiv as null.");
     }
@@ -292,8 +315,8 @@ class obwidget {
     if ((uv === undefined) || (uv === null)) {
       console.log("configure_form_pt() error unique_venues is undefined!!"); debugger; 
     }
-    const PRINT_N = printer.my_printer(this.verbose_ob, "ob.js->configure_form_pt(len=" + uv.length + ",onm03=" + onm03 + "): ");
-    console.log(" --- Starting configure_form_pt: uv.length=" + uv.length);
+    const PRINT_N = printer.make_print_n(this.verbose_ob, "ob.js->configure_form_pt(len=" + uv.length + ",onm03=" + onm03 + "): ");
+    DEBUG && PRINT_N(2, " --- Starting configure_form_pt: uv.length=" + uv.length);
     let Group = ['All'];  
     if (uv.length <= 1) {
     } else if (onm03 == 3) {
@@ -360,10 +383,10 @@ class obwidget {
     Changer({'target':{'value':'All'}});
   }
   configure_algo_data() {
-    const PRINT_N = printer.my_printer(this.verbose_ob, "ob.js->configure_algo_data()");
+    const PRINT_N = printer.make_print_n(this.verbose_ob, "ob.js->configure_algo_data()");
     const multi = pretty_num.bigmult(this.orig.unit);
     const bi_st0 = process_string_bi(this.orig.st_time);
-    let nr = this.data.nr;
+    const my_this = this;
     this.orig.bi_st0 = bi_st0;
     const mm = (x) => (bi_st0 + BigInt(Math.floor(multi*x)));
     this.unique_prices = [...new Set([...((this.data.buys !== null) ? this.data.buys.price : []),...(
@@ -378,66 +401,89 @@ class obwidget {
     if (!(!(this.data.sells))) { this.data.sells.vpi = this.data.sells.price.map((x)=>this.data.sells.u_p.indexOf(x)); }
     this.data.unique_venues = [...new Set([...((this.data.buys !== null) && (!(!(this.data.buys.vs)))) ? this.data.buys.vs : [],
                                       ...((this.data.sells !== null) && (!(!(this.data.sells.vs)))) ? this.data.sells.vs: []])].sort();
-    const uv = this.data.unique_venues;
+    if (this.data.unique_venues.length > 0)  {
+      if ((typeof(this.data.unique_venues[0]) == 'number') && (this.data.nr !== undefined) && is_numeric(this.data.nr)) {
+        this.data.unique_venues = [...this.data.unique_venues.filter((x)=>(x !== this.data.nr)),
+                                   ...this.data.unique_venues.filter((x)=>(x==this.data.nr))]
+      } else if (typeof(this.data.unique_venues[0] == 'string')) {
+        this.data.unique_venues = [...this.data.unique_venues.filter((x)=>((x != 'market') && (x !== 'Market') && (x !== 'm'))),
+                                   ...this.data.unique_venues.filter((x)=>((x=='market') || (x=='m') || (x == 'Market')))];
+      }
+    }
+    const uv = (this.data.unique_venues === null) ? [] : this.data.unique_venues;
+    let nr = (!(!(this.data.nr)) && is_numeric(this.data.nr)) ? this.data.nr : uv.filter((x)=>((x!='market') && (x != 'm') && (x !== 'Market'))).length;
     if ((this.data.buys !== null) && (!(this.data.buys.vs))) { this.data.buys.ivs = Array(this.data.buys.open.length).fill(0); }
     if ((this.data.sells !== null) && (!(this.data.sells.vs))) { this.data.sells.ivs = Array(this.data.sells.open.length).fill(0); }
     if ((this.data.buys !== null) && (!(!(this.data.buys.vs)))) { this.data.buys.ivs = this.data.buys.vs.map((x)=>uv.indexOf(x)); }
     if ((this.data.sells !== null) && (!(!(this.data.sells.vs)))) { this.data.sells.ivs = this.data.sells.vs.map((x)=>uv.indexOf(x)); }
     DEBUG && PRINT_N(2, " About to look at onm03");
-    const onm03 = ((uv.includes('market')) ? 3 :
-                   (uv.includes('m')) ? 2 : 
-                   ((!(!(nr))) && (nr > 0) && (Math.isInteger(uv[uv.length-1])) && 
-                    (uv.length > nr) && (uv[uv.length-1] == nr)) ? 1 :
-                   0);
-    this.data.onm03 = onm03;
-    const bd = (this.data.buys == null) ? {'price':[], 'qty':[], 'open':[], 'close':[], 'ivs':[], 'u_p':[], 'vpi':[]} : this.data.buys;
-    DEBUG && PRINT_N(2, " Got bd");
+    const uvl = uv.length;  const last_uv = (uvl > 0) ? uv[uv.length -1] : -100;
+    const case03 = ((uv.includes('market') || (uv.includes('Market')))) ? true : false;
+    const case02 = (uv.includes('m')) ? true : false;
+    const case01 = ((nr > 0) && (uvl > nr) && (is_positive_numeric(last_uv)) && (Number.isInteger(last_uv)) &&  (last_uv==nr)) ? true : false;
+    const onm03 = case03 ? 3 : case02 ? 2 : case01 ? 1 : 0;
+    my_this.data.onm03 = onm03;
+    my_this.data.nr = (onm03 > 0) ? uvl-1 : uvl;  nr = my_this.data.nr;
+    DEBUG && PRINT_N(2, " We got onm03 = " + onm03);
+    const byd = ((this.data.buys === undefined) || (this.data.buys === null)) ? {'price':[], 'qty':[], 'open':[], 'close':[], 'ivs':[], 'u_p':[], 'vpi':[]} : this.data.buys;
+    DEBUG && PRINT_N(2, " Got byd");
     const filt_b = ((onm03 === 0) ? ((x)=>(true)) :
-                    (onm03 === 1) ? ((x,ix)=> (bd.vs[ix] == nr)) :
-                    (onm03 === 2) ? ((x,ix)=>(bd.vs[ix] == 'm')) :
-                    (onm04 === 3) ? ((x,ix)=>(bd.vs[ix] == 'market')) : ((x)=>(true)));
+                    (onm03 === 1) ? ((x,ix)=> (byd.vs[ix] == nr)) :
+                    (onm03 === 2) ? ((x,ix)=>(byd.vs[ix] == 'm')) :
+                    (onm03 === 3) ? ((x,ix)=>((byd.vs[ix] == 'market') || (byd.vs[ix]=='Market'))) : ((x)=>(true)));
     DEBUG && PRINT_N(2, "Calculate Buy m dside");
-    const bm = sort_tp(cumulate_dside({'vo':bd.open.filter(filt_b).map(mm), 'vc':bd.close.filter(filt_b).map(mm), 
-                                       'vq':bd.qty.filter(filt_b), 'vpi':bd.vpi.filter(filt_b), 'dtitle': 'buys_cumulate'}));
+    const bm = sort_tp(cumulate_dside({'vo':byd.open.filter(filt_b).map(mm), 'vc':byd.close.filter(filt_b).map(mm), 
+                                       'vq':byd.qty.filter(filt_b), 'vpi':byd.vpi.filter(filt_b), 'dtitle': 'buys_cumulate'}));
     let set_buys = [bm];
-    for (let iven=0; iven < uv.length; iven++) {
-      const f1 = (x,i)=>bd.ivs[i]==iven; 
+    for (let iven=0; iven < nr; iven++) {
+      const f1 = (x,i)=>byd.ivs[i]==iven; 
       DEBUG && PRINT_N(6, "Calculate Buy iven for " + iven + "/" + uv.length);
-      const br1 = sort_tp(cumulate_dside({'vo':bd.open.filter(f1).map(mm),'vc':bd.close.filter(f1).map(mm),'vq':bd.qty.filter(f1),'vpi':bd.vpi.filter(f1),'dtitle':('buys_f1_cumulate'+iven)}));
+      const br1 = sort_tp(cumulate_dside({'vo':byd.open.filter(f1).map(mm),'vc':byd.close.filter(f1).map(mm),'vq':byd.qty.filter(f1),'vpi':byd.vpi.filter(f1),'dtitle':('buys_f1_cumulate'+iven)}));
       set_buys.push(br1);
     }
     DEBUG && PRINT_N(2, "concatenating Buys");
-    const oad_b = cumulate.concatenate_cds(set_buys, bd.u_p); 
-
+    const oad_b = cumulate.concatenate_cds(set_buys, byd.u_p); 
+    DEBUG && PRINT_N(2, " collecting sells.");
     const sd = (this.data.sells == null) ? {'price':[], 'qty':[], 'open':[], 'close':[], 'ivs':[], 'u_p':[], 'vpi':[]} : this.data.sells;
     if (sd.open.length <= 0) {
       PRINT_N(-6, "runOBATest: there is zero length sells."); debugger;
     }
+    DEBUG && PRINT_N(2, " Assessing Sells of cumulate_dside.");
     const filt_s = ((onm03 === 0) ? ((x)=>(true)) :
                     (onm03 === 1) ? ((x,ix)=> (sd.vs[ix] == nr)) :
                     (onm03 === 2) ? ((x,ix)=>(sd.vs[ix] == 'm')) :
-                    (onm04 === 3) ? ((x,ix)=>(sd.vs[ix] == 'market')) : ((x)=>(true)));
-    DEBUG && PRINT_N(1, " Creating cumulate_dside for Sells, starting with market.");
+                    (onm03 === 3) ? ((x,ix)=>((sd.vs[ix] == 'market') || (sd.vs[ix]=='Market'))) : ((x)=>(true)));
+    DEBUG && PRINT_N(1, " Creating cumulate_dside for Sells, starting with market. applying filt_s.");
     const sm = sort_tp(cumulate_dside({'vo':sd.open.filter(filt_s).map(mm), 'vc':sd.close.filter(filt_s).map(mm), 
                                        'vq':sd.qty.filter(filt_s), 'vpi':sd.vpi.filter(filt_s), 'dtitle': 'sells_cumulate'}));
+    DEBUG && PRINT_N(1, " Creating set_sells initially with sm.");
     let set_sells = [sm];
-    for (let iven=0; iven < uv.length; iven++) {
+    DEBUG && PRINT_N(1, " Now installing remaining elements.");
+    for (let iven=0; iven < nr; iven++) {
       const g1 = (x,i)=>sd.ivs[i]==iven; 
       DEBUG && PRINT_N(6, "Creating iven = " + iven + " now cumulate_dside");
       const sr1 = sort_tp(cumulate_dside({'vo':sd.open.filter(g1).map(mm),'vc':sd.close.filter(g1).map(mm),'vq':sd.qty.filter(g1),'vpi':sd.vpi.filter(g1),'dtitle':('sells_g1_cumulate:' + iven)}));
       set_sells.push(sr1);
     }
+    DEBUG && PRINT_N(1, " Ready to concatenate set_sells from data with sd.u_p length " + sd.u_p.length);
     const oad_s = cumulate.concatenate_cds(set_sells, sd.u_p); 
-    this.oad = {'b':oad_b,'s':oad_s, 'nr': (onm03 == 2) ? uv.length - 1 : uv.length, 'bi_st0':bi_st0}; 
-
-    if ((oad_b.u_p === null) || (oad_b.u_p === undefined) || (oad_s.u_p == null) || (oad_s.u_p === undefined)) {
+    DEBUG && PRINT_N(1, " Moving on constructing oad.  Note bi_st0 =" + bi_st0);
+    this.oad = {'b':oad_b,'s':oad_s, 'nr': nr, 'bi_st0':bi_st0}; 
+    DEBUG && PRINT_N(1, " Checking quality of oad.");
+    if ((oad_b.u_p === null) || (oad_b.u_p === undefined) || (oad_s.u_p === null) || (oad_s.u_p === undefined)) {
       DEBUG && PRINT_N(-6, "Configuration of oads: we have u_p is null somewhere?");  debugger;
     }
-
+    DEBUG && PRINT_N(1, " Installing click_func.");
     // Note "run_algo" defined up above;
-    this.algo_button.addEventListener('click', (event) => { PRINT_N(1, "graphing:::algo_button click: run_algo"); run_algo(); PRINT_N(1, " --- algo button.  Finished"); });
-    this.algo_button.addEventListener('onClick', (event) => { PRINT_N(1, "graphing:::algo_button onClick: run_algo"); run_algo(); PRINT_N(1, " --- algo button. Finished")});
-    DEBUG && PRINT_N(1,"Automatically Run Algo anyway!");
+    const click_func =  function(event) {
+      DEBUG && PRINT_N(1, "graphing:::algo_button click: run_algo"); 
+      my_this.this_run_algo(); 
+      DEBUG && PRINT_N(1, " --- algo button.  Finished"); 
+    }
+
+    this.algo_button.addEventListener('click', click_func); 
+    this.algo_button.addEventListener('onClick', click_func); 
+    DEBUG && PRINT_N(1,"Automatically Run Algo anyway! GO!");
     run_algo(this, PRINT_N);
     if ((this.data.ps === null) || (this.data.ps === undefined)) {
       PRINT_N(-6, " ERROR, we have Order algo was run but returned nothing.");
@@ -810,6 +856,11 @@ class obwidget {
        // canvas_gpu is the context
        this.draw_ob.blank_main(this.canvas_gpu, this.device);
   }
+  async keep_pause_render(properties) {
+    const my_this = this;
+    const PRINT_N = my_this.printer.make_print_n(my_this.verbose_ob, "ob.js->keep_pause render()::: ");
+    DEBUG && PRINT_N(2, ":: keep_pause_render called.  Press: \"Render Widget\" button to begin widget calculations.");
+  }
   async render(properties) {
     const PRINT_N = this.printer.make_print_n(this.verbose_ob, "ob.js->async_render()::: "); 
     
@@ -881,6 +932,17 @@ class obwidget {
     this.render_time_slider();
     this.render_price_slider();
     this.render_unit_slider();
+  }
+  reset_settings() {
+    const my_this = this;
+    const PRINT_N = my_this.printer.make_print_n(my_this.verbose_ob, "reset_settings");
+    this.data.pmin = this.orig.pmin; this.data.pmax = this.orig.pmax;  this.data.tmin = this.orig.tmin;
+    this.data.tmax = this.orig.tmax;  this.data.unit = this.orig.unit;
+    this.time_slider_div.noUiSlider.set([my_this.data.tmin,my_this.data.tmax]); 
+    this.price_slider_div.noUiSlider.set([my_this.data.pmin, my_this.data.pmax]); 
+    this.unit_slider_div.noUiSlider.set( my_this.data.unit);
+    this.redraw_price_axis(); this.updateFormTime();
+    this.redraw_time_axis();  this.call_plot();
   }
   call_plot() {
     const PRINT_N = this.PRINT_N;
