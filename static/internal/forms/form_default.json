@@ -16,11 +16,10 @@
     "<option value='PctDepth'>PctDepth</option> ",
     "<option value='ExpDecay'>ExpDecay</option> ",
     "</select>",
-    "Participant Target: <input id = 'input_pt' type='text' placebolder='PartTarg' value='All' />",
+    "Algo Depths: <input id='input_v_d' type='text' placeholder='Depth' value='[10000, 50000, 100000]' />",
     "<label for='algo_type'>Participant Target:</label> ",
-    "<select name='input_participant_target' id='input_participant_target'> ",
-    "</select>",
-    "Algo Depths: <input id='input_v_d' type='text' placeholder='Depth' value='[10000, 50000, 100000]' /> <br>",
+    "<select name='input_participant_target' id='input_participant_target'> </select><br>",
+    "</select> <br>",
     "Algo Calculate: ",
     "Sum Quantity?: <input type='checkbox' id='cacl_sumq' name='calc_sumq' value='w_sumq' checked='checked'/>",
     "Sum Dollars?: <input type='checkbox' id='cacl_sumpq' name='calc_sumpq' value='w_sumpq' checked='checked'/>",
@@ -36,7 +35,8 @@
    "</form>", "</p>"],
 "Defaults": {"AlgoType":"NumFixed"},
 "form_width": 800,
-"form_height": 180,
-"form_font_size":20 
+"form_height": 120,
+"form_font_size":20,
+"form_top": 45 
 }
   
