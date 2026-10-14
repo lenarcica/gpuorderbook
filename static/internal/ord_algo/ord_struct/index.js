@@ -124,7 +124,7 @@ OneSideState.prototype.fresh_w_window_calc = OneSideState_fresh_w_window_calc;
 OneSideState.prototype.fresh_w_all_window = OneSideState_fresh_w_all_window;
 
 
-const p_exports =  { "MarketExchangeBook":MarketExchangeBook, "OneSideCombinedBook":OneSideCombinedBook, 
+const p_exports =  ((DEBUG) ? { "MarketExchangeBook":MarketExchangeBook, "OneSideCombinedBook":OneSideCombinedBook, 
   "OneSideBook":OneSideBook, "TotalCurrentState":TotalCurrentState, "OneSideState":OneSideState, "OneLevelState":OneLevelState,
   "ManualCalc":ManualCalc, "calc_barrier_algo":calc_barrier_algo, "calc_barrier_num_filled":calc_barrier_num_filled, 
   "calc_barrier_num_all":calc_barrier_num_all, "calc_barrier_num_shares":calc_barrier_num_shares,
@@ -135,7 +135,12 @@ const p_exports =  { "MarketExchangeBook":MarketExchangeBook, "OneSideCombinedBo
   "calc_mc_ir_algo":calc_mc_ir_algo,
   "Kalgo":Kalgo, "isin_Kalgo":isin_Kalgo, "str_kalgo":str_kalgo, "und_str_kalgo":und_str_kalgo,
   "make_print_n":make_print_n
-};
+} : { "MarketExchangeBook":MarketExchangeBook, "OneSideCombinedBook":OneSideCombinedBook, 
+  "OneSideBook":OneSideBook, "TotalCurrentState":TotalCurrentState, "OneSideState":OneSideState, "OneLevelState":OneLevelState,
+  "ManualCalc":ManualCalc,  
+  "Kalgo":Kalgo, "isin_Kalgo":isin_Kalgo, "str_kalgo":str_kalgo, "und_str_kalgo":und_str_kalgo,
+  "make_print_n":make_print_n
+} );
 
 module.exports = p_exports;
 /****
