@@ -761,6 +761,7 @@ class TotalCurrentState {
     this.verbose_ob = {'s':[],verbose:verbose};
   }
   test_tcs_state_no_mkt(bs01, xb) {
+    if (DEBUG) {
     let n_err = 0;
     let dxb = (bs01 === 0) ?  xb.b : xb.s;
     let ocs = (bs01 === 1) ? this.b : this.s;
@@ -796,7 +797,10 @@ class TotalCurrentState {
         }
       }
     }
-    return n_err;
+      return n_err;
+    } else {
+      return(0);
+    }
   }
 }
 
