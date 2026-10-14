@@ -256,7 +256,8 @@ class obwidget {
     }
     // Making Data own a copy of verbose_ob.
     if ( (!(!(this.data)))) { this.data.verbose_ob = this.verbose_ob; }
-
+    
+    if ((this.data.dt === undefined) || (this.data.dt === null)) { this.data.dt = ''; }
     // Setting appreciable height, width, bar width.
     if (is_positive_numeric(this.data.height)) { this.data.height = Math.floor(this.data.height) } else { PRINT_N(0, " invalid data.height."); this.data.height = demo_data.height }
     if (is_positive_numeric(this.data.width)) { this.data.width = Math.floor(this.data.width) } else { PRINT_N(0, " invalid data width."); this.data.width = demo_data.width }
@@ -288,7 +289,7 @@ class obwidget {
       }
     } else {
       this.orig.tmin = this.data.tmin * 1.0; this.orig.tmax = this.data.tmax * 1.0;  this.orig.st_time = this.data.st_time + '';
-      this.orig.pmin = this.data.pmin * 1.0; this.orig.pmax = this.data.pmax * 1.0;
+      this.orig.pmin = this.data.pmin * 1.0; this.orig.pmax = this.data.pmax * 1.0; this.orig.unit = this.data.unit * 1.0;
     } 
     this.data.origmult = 1.0;
     if (!(this.going)) { this.going = {'tmin':this.data.tmin*1.0, 'tmax':this.data.tmax*1.0, 'unit':this.data.unit, 'st_time':this.data.st_time }
@@ -384,11 +385,14 @@ class obwidget {
   }
   configure_algo_data() {
     const PRINT_N = printer.make_print_n(this.verbose_ob, "ob.js->configure_algo_data()");
+    DEBUG && PRINT_N(1, " :: initiate configure.");
     const multi = pretty_num.bigmult(this.orig.unit);
-    const bi_st0 = process_string_bi(this.orig.st_time);
+    DEBUG && PRINT_N(1, " :: Attempting to get Start time in a BigInt format.");
+    const bi_st0 = process_string_bi(this.orig.st_time.replace(this.data['dt'] + 'T','').replace(this.data['dt'] + ' ','').replace(this.data['dt'],''));
     const my_this = this;
     this.orig.bi_st0 = bi_st0;
     const mm = (x) => (bi_st0 + BigInt(Math.floor(multi*x)));
+    DEBUG && PRINT_N(1, " Calculating Unique Prices.");
     this.unique_prices = [...new Set([...((this.data.buys !== null) ? this.data.buys.price : []),...(
                                           (this.data.sells != null) ? this.data.sells.price: [])])].sort();
     if (!(!(this.data.buys))) {
@@ -399,6 +403,8 @@ class obwidget {
     }
     if (!(!(this.data.buys))) { this.data.buys.vpi = this.data.buys.price.map((x)=>this.data.buys.u_p.indexOf(x)); }
     if (!(!(this.data.sells))) { this.data.sells.vpi = this.data.sells.price.map((x)=>this.data.sells.u_p.indexOf(x)); }
+
+    DEBUG && PRINT_N(1, " Calculating unique Venues.");
     this.data.unique_venues = [...new Set([...((this.data.buys !== null) && (!(!(this.data.buys.vs)))) ? this.data.buys.vs : [],
                                       ...((this.data.sells !== null) && (!(!(this.data.sells.vs)))) ? this.data.sells.vs: []])].sort();
     if (this.data.unique_venues.length > 0)  {
@@ -416,7 +422,7 @@ class obwidget {
     if ((this.data.sells !== null) && (!(this.data.sells.vs))) { this.data.sells.ivs = Array(this.data.sells.open.length).fill(0); }
     if ((this.data.buys !== null) && (!(!(this.data.buys.vs)))) { this.data.buys.ivs = this.data.buys.vs.map((x)=>uv.indexOf(x)); }
     if ((this.data.sells !== null) && (!(!(this.data.sells.vs)))) { this.data.sells.ivs = this.data.sells.vs.map((x)=>uv.indexOf(x)); }
-    DEBUG && PRINT_N(2, " About to look at onm03");
+    DEBUG && PRINT_N(2, " About to look at onm03: temp nr is " + nr);
     const uvl = uv.length;  const last_uv = (uvl > 0) ? uv[uv.length -1] : -100;
     const case03 = ((uv.includes('market') || (uv.includes('Market')))) ? true : false;
     const case02 = (uv.includes('m')) ? true : false;
@@ -468,7 +474,7 @@ class obwidget {
     DEBUG && PRINT_N(1, " Ready to concatenate set_sells from data with sd.u_p length " + sd.u_p.length);
     const oad_s = cumulate.concatenate_cds(set_sells, sd.u_p); 
     DEBUG && PRINT_N(1, " Moving on constructing oad.  Note bi_st0 =" + bi_st0);
-    this.oad = {'b':oad_b,'s':oad_s, 'nr': nr, 'bi_st0':bi_st0}; 
+    this.oad = {'b':oad_b,'s':oad_s, 'nr': this.data.nr, 'bi_st0':bi_st0}; 
     DEBUG && PRINT_N(1, " Checking quality of oad.");
     if ((oad_b.u_p === null) || (oad_b.u_p === undefined) || (oad_s.u_p === null) || (oad_s.u_p === undefined)) {
       DEBUG && PRINT_N(-6, "Configuration of oads: we have u_p is null somewhere?");  debugger;
@@ -690,7 +696,7 @@ class obwidget {
       if (!(this.data.width)) {
         PRINT_N(0, "ERROR configureWidgetGPU - this.data does not have width configured yet."); debugger;
       }
-      this.margins =  {'left': Math.floor(this.data.width * .35), 'top': Math.floor(this.data.height)*.2, 'bottom': Math.floor(this.data.height)*.7, itm:.1, 'right':Math.floor(this.data.width*.2) }
+      this.margins =  {'left': Math.floor(this.data.width * .35), 'top': Math.floor(this.data.height)*.15, 'bottom': Math.floor(this.data.height)*.7, itm:.1, 'right':Math.floor(this.data.width*.2) }
 
       this.configureForm();
 
@@ -702,7 +708,7 @@ class obwidget {
       this.widgetDiv.style.justifyContent = 'center';
       this.widgetDiv.style.alignItems = 'center';
       this.widgetDiv.setAttribute('z-level',0);
-      this.widgetDiv.draw_top = (default_form_data.form_top) + (default_form_data.form_height);
+      this.widgetDiv.draw_top = (default_form_data.form_top) + (default_form_data.form_height) + this.margins.top;
       this.widgetDiv.style.top = this.widgetDiv.draw_top + 'px'; this.widgetDiv.setAttribute('top', this.widgetDiv.draw_top + 'px');
       // Implement Auto Widgth later
       //this.widgetDiv.style.width = this.data.width === 'auto' ? '100%' : `${this.width}px`;
@@ -728,7 +734,7 @@ class obwidget {
       this.textDiv.style.inset = '0'; this.textDiv.style.fontSize = '24px';
       this.textDiv.style.flexDirection = 'column'; this.textDiv.style.justifyContent = 'center';
       this.textDiv.style.alignItems = 'center'; this.textDiv.setAttribute('z-level',0);
-      this.textDiv.style.top = (this.margins.top + this.margins.bottom + this.data.height) + 'px';  
+      this.textDiv.style.top = (this.widgetDiv.draw_top + this.margins.bottom + this.data.height) + 'px';  
       this.textDiv.style.left = this.margins.left + 'px';
       this.textDiv.style.width = (this.data.width) + 'px';
       this.textDiv.style.height = (this.text_win_height) + 'px'; 
@@ -737,7 +743,6 @@ class obwidget {
       this.textDiv.setAttribute('height',(this.data.text_win_height) + 'px');
       this.textDiv.setAttribute('width', (this.data.width) + 'px');
       this.widgetDiv.appendChild(this.textDiv); 
-      this.widgetDiv.draw_top = this.margins.top;
       //this.count_widgettext = 0;
       PRINT_N(1, "obwidget->class->render() generating canvasDiv.");
       // D3 Might not work given the challenges of selection.  But Ideally 
@@ -783,7 +788,7 @@ class obwidget {
       this.svg_zone.setAttributeNS(this.svgns, "viewBox", "0 0 " + this.data.width + " " + this.data.height);
       this.svg_zone.style.position = 'absolute';
       this.svg_zone.setAttribute('left', 0 + 'px'); this.svg_zone.style.left = '0px'; this.svg_zone.style.top = '0px';
-      this.svg_zone.setAttribute('top', 0 + 'px');
+      this.svg_zone.setAttribute('top', 0 + 'px');  this.svg_zone.style.zIndex = 3;
 
 
       this.canvas_bars = document.createElement('canvas');
@@ -794,9 +799,9 @@ class obwidget {
       this.canvas_bars.style.width=cbw + 'px';  this.svg_zone.setAttribute('id','canvas_bars_' + this.randomStr); 
       this.canvas_bars.style.height=(this.data.height)+'px';
       this.canvas_bars.setAttribute('height',this.data.height);  
-      this.canvas_bars.setAttribute('width',cbw+"px"); this.svg_zone.setAttribute('z-level',3);
+      this.canvas_bars.setAttribute('width',cbw+"px"); 
       this.canvas_bars.setAttributeNS(this.svgns, "viewBox", "0 0 " + this.data.width + " " + this.data.height);
-      this.canvas_bars.style.position = 'absolute';  this.canvas_bars.style.zIndex='2';
+      this.canvas_bars.style.position = 'absolute';  this.canvas_bars.style.zIndex='0';
       this.canvas_bars.setAttribute('left', Math.floor(this.data.width + this.margins.itm*this.margins.right) + 'px'); 
       this.canvas_bars.style.left = Math.floor(this.data.width + this.margins.itm * this.margins.right) + 'px'; this.svg_zone.style.top = '0px';
       this.canvas_bars.setAttribute('z-index',1);
@@ -814,7 +819,7 @@ class obwidget {
       this.svg_bars.style.height=(this.data.height)+'px';
       this.svg_bars.setAttribute('height',this.data.height);  
       this.svg_bars.setAttribute('z-index',10);
-      this.svg_bars.setAttribute('width',Math.floor(this.data.bar_width + this.margins.right)+"px"); this.svg_zone.setAttribute('z-level',3);
+      this.svg_bars.setAttribute('width',Math.floor(this.data.bar_width + this.margins.right)+"px");
       this.svg_bars.setAttributeNS(this.svgns, "viewBox", "0 0 " + this.data.width + " " + this.data.height);
       this.svg_bars.style.position = 'absolute';
       this.svg_bars.setAttribute('left', 0 + 'px'); 
@@ -990,8 +995,9 @@ class obwidget {
   }
   add_unit_slider_div() {
     this.unit_slider_div = this.add_me_widget_div('unit_slider_div',this.widgetDiv,'absolute','0',
-       Math.floor(this.widgetDiv.draw_top - (4.0/7.0)*this.margins.top), this.margins.left,
+       Math.floor(this.widgetDiv.draw_top - (slider_pixels + (4.0/7.0)*this.margins.top)), this.margins.left,
        slider_pixels, this.data.width);
+    this.unit_slider_div.style.zIndex=1;
   }
   add_price_slider_div() {
     this.price_slider_div = this.add_me_widget_div('price_slider_div',this.widgetDiv,'absolute','0',
