@@ -86,12 +86,12 @@ async function async_gpu_render({ model, el }) {
 export default {
   initialize({model}) {
     PRINT_N(1, "widget_index.js->initialize(); called."); 
-    PRINT_N(1, Object.keys(model));
+    PRINT_N(1, Object.keys(model).join(","));
     PRINT_N(1, "--  widget_index->intialize() end");
   },
   render({model, el}) {
     PRINT_N(1, "-- widget_index.render() called trying to call the async_gpu_render();");
-    async_gpu_render({model,el});
+    async_gpu_render({'model':model,'el':el});
     PRINT_N(1, "-- widget_index.render -- end of call to async_gpu_render.");
   }
 }
