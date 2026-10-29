@@ -3,6 +3,7 @@
 esbuild --bundle --format=esm --define:DEBUG=true --outdir=outwidget/static widget_src/widget_index.js
 
 
+esbuild --bundle --format=esm --define:DEBUG=false --minify --outdir=outwidget/static widget_src/widget_index.js
 
 
 esbuild --bundle --format=esm --define:DEBUG=true --outdir=outwidget/verify_levs static/internal/ord_algo/verify_levs.js
@@ -17,5 +18,9 @@ esbuild --bundle --format=esm --define:DEBUG=true --outdir=outwidget/sip_algo st
 esbuild --bundle --format=esm --define:DEBUG=true --outdir=outwidget/cumulate static/internal/ord_algo/cumulate.js
 
 esbuild --bundle --format=esm --define:DEBUG=true --outdir=outwidget/ord_algo static/internal/ord_algo/app.js
+
+
+
+esbuild --bundle --format=esm --define:DEBUG=true --outdir=outwidget/a_slider static/internal/slider/a_slider.js
 
 
