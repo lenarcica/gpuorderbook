@@ -266,7 +266,7 @@ const BadPrep = (`
 const place_svg_ps = function(svg_svg, data, timeX, priceY, price_delta, wpfac, wpmax) {
   if ((data.ps === null) || (data.ps === undefined)) { past_ps = null; return(-1); }
   const PRINT_N = printer.make_print_n(data.verbose_ob, "place_svg_ps");
-  DEBUG && PRINT_N(1, "place_svg_ps: Start.");
+  DEBUG && PRINT_N(2, "place_svg_ps: Start.");
   //PRINT_N(-1, " we have placed."); debugger;
   const mult_const = bigmult(data.unit);
   const imult_const = 1.0/mult_const;
@@ -356,8 +356,8 @@ const place_svg_ps = function(svg_svg, data, timeX, priceY, price_delta, wpfac, 
         lwp.setAttribute('d', lln); lwp.setAttribute('fill', 'none');
         //lwp.setAttribute('d', 'M ' + ltm + "," + lpwp + " H " + Math.floor(lntm)); 
       }
-      DEBUG && PRINT_N(2, "prop_mo: Successes on_fd should exit (" +(new_ps.bs01==0?"b":"s")+ on_fd + ",$" + on_wp + ").");
-      DEBUG && PRINT_N(2, " -- tipText :" + prop_mo.tipText);
+      DEBUG && PRINT_N(4, "prop_mo: Successes on_fd should exit (" +(new_ps.bs01==0?"b":"s")+ on_fd + ",$" + on_wp + ").");
+      DEBUG && PRINT_N(4, " -- tipText :" + prop_mo.tipText);
       //debugger;
     } else {
       //const onk = new_ps.lev;  const nr = data.ps.nr; const nk = data.ps.nk;

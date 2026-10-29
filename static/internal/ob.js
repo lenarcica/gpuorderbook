@@ -19,7 +19,7 @@ require('../external/nouislider.min.css'); // Import the CSS as well
 console.log("ob require, do we have d3?");
 const debug_code = require("./debug.js");
 const demo_data = require("./demo_data.js");
-const printer = require("./printer.js");
+const printer = require("./printer.js");  const make_print_n = printer.make_print_n;
 const default_verbose_ob = {'s':[], 'verbose':0};
 //const nouislider = require("../external/nouislider.js");
 const draw_ob = require("./draw_ob.js");
@@ -120,16 +120,25 @@ function resort_dside(dside) {
 
 // We call this function to populate "ps" post algorithm data useful by gpu object.
 const run_algo = function(my_this, PRINT_N) { 
-  DEBUG && PRINT_N(1, "ob.js->run_algo called");
+  PRINT_N(1, "ob.js->run_algo called: ");
   const multi = pretty_num.bigmult(my_this.orig.unit);
   const time_min_bi = BigInt(Math.round(multi * my_this.orig.tmin)) + my_this.oad.bi_st0;
   const time_max_bi = BigInt(Math.round(multi * my_this.orig.tmax)) + my_this.oad.bi_st0;
   DEBUG && PRINT_N(1, " -- About to run order_algo");
+  const s_time = performance.now();
   my_this.data.ps = ord_algo.order_algo(my_this.oad, my_this.algo_data.v_d, null, 
                                          my_this.algo_data.kalgo, my_this.algo_data.w_sum_q, my_this.algo_data.w_sum_pq, 
                                          my_this.algo_data.w_avp, my_this.algo_data.w_wp, my_this.algo_data.w_nocc, 
                                          my_this.algo_data.w_atq, my_this.algo_data.w_crit_pi, my_this.algo_data.w_crit_p, my_this.oad_verbose_ob, time_min_bi, time_max_bi); 
-  DEBUG && PRINT_N(1, " -- Order algo returned a ps  length: " + ((my_this.data.ps !== null) && (my_this.data.ps !== undefined) ? my_this.data.ps.length : 0)); 
+  PRINT_N(1, " Exit ord_algo, ps is generated."); 
+  const e_time = performance.now();
+  const b_len = (((my_this.oad.b === null) || (my_this.oad.b===undefined) || (my_this.oad.b.vt === null) || (my_this.oad.b.vt===undefined)) ? 0 : my_this.oad.b.vt.length );
+  const s_len = (((my_this.oad.s === null) || (my_this.oad.s===undefined) || (my_this.oad.s.vt === null) || (my_this.oad.s.vt===undefined)) ? 0 : my_this.oad.s.vt.length );
+  const t_len = (((my_this.data.ps === null) || (my_this.data.ps === undefined) || (my_this.data.ps.v_time === null) || (my_this.data.ps.v_time===undefined)) ? 0 :
+                  my_this.data.ps.v_time.length);
+  PRINT_N(1, " -- Order algo[db=" + DEBUG + ",vb=" + my_this.verbose_ob.verbose + ",len(b)=" + (b_len) + ",len(s)=" + (s_len) + 
+                      "] returned a ps  length: " + t_len +  
+                      ", took " + ((e_time-s_time)/1000).toFixed(4) + " sec to complete."); 
   my_this.data.bi_st0 = my_this.oad.bi_st0;
   DEBUG && PRINT_N(1, "os.js->run_algo -- success apparently.");
 }
@@ -142,7 +151,7 @@ class obwidget {
   count_renders = 0; draw_ob = draw_ob; svgns = svgns; svg_ob = svg_ob; pretty_num = pretty_num; time_range_dict = [0,1];
   unique_prices = []; oad={}; algo_data = {}; ps = null;  bigmult = pretty_num.bigmult;  ord_algo=ord_algo;
   do_plots = {'do_nbbo':true,'do_trades':true,'do_quotes':true,'do_wp':true}; bars = bars;
-  bardr = null; pause_render = false; 
+  bardr = null; pause_render = false; debug_setting = DEBUG;
   constructor({model, el}) {
     this.randomStr = (Math.random().toString(36).substring(2, 5) +
           Math.random().toString(36).substring(2, 5));
@@ -200,7 +209,7 @@ class obwidget {
       DEBUG && PRINT_N(1, ":: We are ready to configure Algorithm Data.");
       this.configure_algo_data();
     }
-    DEBUG && PRINT_N(1, "We conclude constructor.");
+    PRINT_N(1, "obwidget.js-> Constructor completed, object is created.");
   }
   configure_pause_render() {
     const my_this = this;
@@ -386,6 +395,7 @@ class obwidget {
   configure_algo_data() {
     const PRINT_N = printer.make_print_n(this.verbose_ob, "ob.js->configure_algo_data()");
     DEBUG && PRINT_N(1, " :: initiate configure.");
+    const oad_compute_start = performance.now();
     const multi = pretty_num.bigmult(this.orig.unit);
     DEBUG && PRINT_N(1, " :: Attempting to get Start time in a BigInt format.");
     const bi_st0 = process_string_bi(this.orig.st_time.replace(this.data['dt'] + 'T','').replace(this.data['dt'] + ' ','').replace(this.data['dt'],''));
@@ -475,6 +485,11 @@ class obwidget {
     const oad_s = cumulate.concatenate_cds(set_sells, sd.u_p); 
     DEBUG && PRINT_N(1, " Moving on constructing oad.  Note bi_st0 =" + bi_st0);
     this.oad = {'b':oad_b,'s':oad_s, 'nr': this.data.nr, 'bi_st0':bi_st0}; 
+    const oad_compute_end = performance.now();
+    const b_len = ((my_this.oad.b === null) || (my_this.oad.b===undefined) || (my_this.oad.b.vt === null) || (my_this.oad.b.vt===undefined)) ? 0 : my_this.oad.b.vt.length;
+    const s_len = ((my_this.oad.s === null) || (my_this.oad.s===undefined) || (my_this.oad.s.vt === null) || (my_this.oad.s.vt===undefined)) ? 0 : my_this.oad.s.vt.length;
+    PRINT_N(1, ":: OAD Compute finished(len(b)=" + b_len + ",len(s)=" + s_len + ") in " + 
+        (((oad_compute_end-oad_compute_start)/1000).toFixed(4)) + " sec."); 
     DEBUG && PRINT_N(1, " Checking quality of oad.");
     if ((oad_b.u_p === null) || (oad_b.u_p === undefined) || (oad_s.u_p === null) || (oad_s.u_p === undefined)) {
       DEBUG && PRINT_N(-6, "Configuration of oads: we have u_p is null somewhere?");  debugger;
@@ -529,8 +544,8 @@ class obwidget {
   }
   //bigmult = pretty_num.bigmult;
   async createRenderer(props) {
-    console.log("createRenderer has initiated.");
-    const PRINT_N = this.PRINT_N;
+    //console.log("createRenderer has initiated.");
+    const PRINT_N = printer.make_print_n(this.verbose_ob, "ob.js->createRenderer"); 
     if (!(PRINT_N)) { console.log("createRenderer -- we don't have a PRINT_N"); }
     DEBUG && this.PRINT_N(0, " createRenderer initiated");
     if (!(this.canvas_gpu)) {
@@ -562,8 +577,8 @@ class obwidget {
     return(this.renderer);
   }
   setupWidget({properties}) {
-    console.log("setupWidget has initiated");
-    const PRINT_N = this.PRINT_N;
+    //console.log("setupWidget has initiated");
+    const PRINT_N = printer.make_print_n(this.verbose_ob, "ob.js->setupWidget()::: ");
     DEBUG && PRINT_N(1,"rrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr");
     DEBUG && PRINT_N(1,"rrr obwidget->class() calling::: setupWidget()");
     if (!(this.debug_button))  {
@@ -589,6 +604,7 @@ class obwidget {
     this.count_renders = 0; this.data = null;
   }
   configureForm() {
+      const PRINT_N = printer.make_print_n(this.verbose_ob, "ob.js->configureForm()::: ");
       this.formDiv = document.createElement('div');
       this.formDiv.setAttribute('id', "form_Div" + this.randomStr);
       this.formDiv.style.position = 'relative';  
@@ -630,6 +646,7 @@ class obwidget {
       this.configureFormHandles();
       this.configure_checkbox('drawQuotes','do_quotes');  this.configure_checkbox('drawNBBO', 'do_nbbo');
       this.configure_checkbox('drawTrades', 'do_trades'); this.configure_checkbox('drawDepths', 'do_wp'); 
+      DEBUG && PRINT_N(1, "Form is created.");
   }
   configure_checkbox(check_name,do_name) {
      const check_box = this.formDiv.querySelector('#' + check_name);
@@ -641,6 +658,7 @@ class obwidget {
      });
   }
   configureFormHandles() {
+    const PRINT_N = printer.make_print_n(this.verbose_ob, "ob.js->configureFormHandles()::: ");
     const f_min = this.formDiv.querySelector("#input_mintime");
     const f_max = this.formDiv.querySelector("#input_maxtime");
     const numt = function(event) {
@@ -671,6 +689,7 @@ class obwidget {
     } else {
       console.log("No f_max yet"); debugger;
     }
+    DEBUG && PRINT_N(1, " --- Handles should be installed.");
   }
   updateFormTime() {
     const data = this.data;
@@ -686,7 +705,7 @@ class obwidget {
   configureWidgetGPU() {
       // Create a Canvas to draw a line onto
       console.log("ob.js -- configureWidgetGPU() started.");
-      const PRINT_N = this.PRINT_N;
+      const PRINT_N = printer.make_print_n(this.verbose_ob, "ob.js->cWGPU()::: "); 
       if (!(PRINT_N)) { console.log("configureWidgetGPU() -- PRINT_N wasn't defined?"); }
       PRINT_N(1,"rrr obwidget->class() Declaring and setting DEFAULT Jupyter DIV (name=" + this.randomDIVNAME+ ") location [w,h]=[" + this.width + "," + this.height + "]");
       PRINT_N(1,"rrr obwidget->class() declaring a widgetDiv");
@@ -857,9 +876,10 @@ class obwidget {
       }
   }
   BlankWindow() {
-       console.log("gpuwidget.js->BlankWindow() we have executed.");
+    const PRINT_N = printer.make_print_n(this.verbose_ob, "ob.js->BlankWindow()");
+    DEBUG && PRINT_N(1, "gpuwidget.js->BlankWindow() we have executed.");
        // canvas_gpu is the context
-       this.draw_ob.blank_main(this.canvas_gpu, this.device);
+    this.draw_ob.blank_main(this.canvas_gpu, this.device);
   }
   async keep_pause_render(properties) {
     const my_this = this;
