@@ -605,6 +605,7 @@ class obwidget {
   }
   configureForm() {
       const PRINT_N = printer.make_print_n(this.verbose_ob, "ob.js->configureForm()::: ");
+      const my_this = this;
       this.formDiv = document.createElement('div');
       this.formDiv.setAttribute('id', "form_Div" + this.randomStr);
       this.formDiv.style.position = 'relative';  
@@ -643,13 +644,21 @@ class obwidget {
         console.log("Error f_input_participant_target not found in form."); debugger;
       }
 
-      this.formDiv.depths = my_this.formDiv.querySelector("#input_v_d");
+      this.formDiv.depths = this.formDiv.querySelector("#input_v_d");
       if ((this.algo_data.v_d !== undefined) && (this.algo_data.v_d !== null)) {
-        this.formDiv.depths.value =  "[" + this.algo_data.v_d.join(","); + "]";
+        this.formDiv.depths.value =  ("[" + this.algo_data.v_d.join(",") + "]");
       }
       if ((this.algo_data.kalgo !== undefined) && (this.algo_data.kalgo !== null) && (this.algo_data.kalgo >= 0)) {
-        this.formDiv.algoType = my_this.formDiv.querySelector('#input_algo_type');
-        this.formDiv.algoType = ord_algo.str_algo(this.algo_data.kalgo); 
+        this.formDiv.algoType = this.formDiv.querySelector('#input_algo_type');
+        this.formDiv.algoType = ord_algo.str_kalgo(this.algo_data.kalgo); 
+      }
+
+      this.formDiv.input_cv = this.formDiv.querySelector('#input_cv');
+      if ((this.formDiv.input_cv !== null) && (this.formDiv.input_cv !== undefined) && 
+         (this.formDiv.input_cv.value !== null) && (this.formDiv.input_cv.value !== undefined) && 
+         (typeof(this.formDiv.input_cv.value)=='string') &&
+         (this.formDiv.input_cv.value.length > 0)) {
+         this.draw_ob.set_clearValue(this.formDiv.input_cv.value);
       }
       
       this.el.appendChild(this.formDiv);

@@ -21,6 +21,29 @@ var presentationFormat = null;
 var renderPassDesc = null;
 var gpu_renderPass_colorAttachment = null;
 
+var clearValue = [0.9,0.9,0.9,1];
+
+const set_clearValue = function(input_v) {
+  if ((input_v == null) || (input_v == undefined)) { return; }
+  if (typeof(input_v) == 'string') {
+     const nv = (input_v.replace('rgb','').replace('(','').replace('[','')
+                        .replace(')','').replace(']','')
+                        .replace('{','').replace('}','').split(',')).map((x)=>Number(x));
+     if (nv.length >= 3) {
+       for (let ii = 0; ii < 3; ii ++) {
+         if ((nv[ii] <= 1.0) && (nv[ii] >=0.0)) {
+           clearValue[ii] = nv[ii];
+         } else {
+           clearValue[ii] = nv[ii]/256;
+         }
+       }
+     }
+  }
+}
+const get_clearValue = function() {
+  return(clearValue);
+}
+
 const bigmult = function(unit) {
     // Determine multiplier to divide object from, assuming unit
     if (unit == 0) { return(1000000000); 
@@ -35,7 +58,7 @@ function generate_gpu_renderPassDescriptor() {
   renderPassDesc = {
     label: 'ob canvas based renderPass',
     colorAttachments: [
-      { view: 0, clearValue: [0.9, 0.9, 0.9, 1],
+      { view: 0, clearValue: clearValue, 
         loadOp: 'clear', storeOp: 'store',
       },
     ]
@@ -1286,7 +1309,7 @@ exports = {'buffers':buffers, "populate_device_data_buffers":populate_device_dat
    "generate_individual_pipeline":generate_individual_pipeline, "generate_gpu_renderPassDescriptor":generate_gpu_renderPassDescriptor,
    "createDepthTextureDesc":createDepthTextureDesc, "blank_main":blank_main,
    "OB_generate_gpu_pipeline":OB_generate_gpu_pipeline, "ob_gpu_render":ob_gpu_render, "get_device_buffer":get_device_buffer,
-   "data_nbb_module":data_nbb_module, "data_nbo_module":data_nbo_module, 'update_buffers_wp':update_buffers_wp
+   "data_nbb_module":data_nbb_module, "data_nbo_module":data_nbo_module, 'update_buffers_wp':update_buffers_wp, "set_clearValue":set_clearValue, "get_clearValue":get_clearValue
 }
 module.exports = exports;
 

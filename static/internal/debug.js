@@ -42,7 +42,7 @@ const install_debug_button = function(my_this) {
   my_this.debug_button.innerHTML = 'Launch Debug';
   const click_func = function(event) {
     PRINT_N(2, "DEBUG Button is being clicked.");
-    in_this=my_this; console.log("graphing:::debug_button clicked");  debugger;
+    in_this=my_this; console.log("graphing:::debug_button clicked"); console.log({my_this}); debugger;
   }
   my_this.debug_button.addEventListener('click', click_func); 
   my_this.debug_button.addEventListener('onClick', click_func); 
@@ -69,6 +69,13 @@ const install_blank_button = function(my_this) {
   const blanker = function(event) {
     my_this.blank_button.style.backgroundColor = on_color;
     in_this=my_this; console.log("graphing:::blank_button clicked");  
+    my_this.formDiv.input_cv = my_this.formDiv.querySelector('#input_cv');
+    if ((my_this.formDiv.input_cv !== null) && (my_this.formDiv.input_cv !== undefined) && 
+        (my_this.formDiv.input_cv.value !== null) && (my_this.formDiv.input_cv.value !== undefined) && 
+        (typeof(my_this.formDiv.input_cv.value)=='string') &&
+        (my_this.formDiv.input_cv.value.length > 0)) {
+      my_this.draw_ob.set_clearValue(my_this.formDiv.input_cv.value);
+    }
     my_this.BlankWindow();
     my_this.blank_button.style.backgroundColor = off_color;
 
