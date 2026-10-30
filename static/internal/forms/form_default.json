@@ -1,8 +1,9 @@
 { "Default_Form":[ 
    "<p>",
    "<form>",
-    "Min Time: <input id='input_mintime' type='text' placeholder='MinTime' value='09:30:00.000'/> <br>",
-    "Max Time: <input id='input_maxtime' type='text' placeholder='MaxTime' value='10:00:00.000'/> ",
+    "Min Time: <input id='input_mintime' type='text' placeholder='MinTime' value='09:30:00.000'/> ",
+    "Max Time: <input id='input_maxtime' type='text' placeholder='MaxTime' value='10:00:00.000'/> <br>",
+    "Clear Value: <input id = 'input_cv' type='text' placeholder='rgb(256,256,256)' value='rgb(256,256,256)' /> ",
     "LineWidths: <input id = 'input_lw' type='text' placeholder='LW' value ='.05'/> <br> ",
     "Algo Type: <input id = 'input_at' type='text' placebolder='AlgoType' value='NumShares' /> ",
     "<label for='algo_type'>Algo Type:</label> ",
