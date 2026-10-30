@@ -642,6 +642,16 @@ class obwidget {
       if ((this.formDiv.f_input_participant_target === null) || (this.formDiv.f_input_participant_target ===undefined)) {
         console.log("Error f_input_participant_target not found in form."); debugger;
       }
+
+      this.formDiv.depths = my_this.formDiv.querySelector("#input_v_d");
+      if ((this.algo_data.v_d !== undefined) && (this.algo_data.v_d !== null)) {
+        this.formDiv.depths.value =  "[" + this.algo_data.v_d.join(","); + "]";
+      }
+      if ((this.algo_data.kalgo !== undefined) && (this.algo_data.kalgo !== null) && (this.algo_data.kalgo >= 0)) {
+        this.formDiv.algoType = my_this.formDiv.querySelector('#input_algo_type');
+        this.formDiv.algoType = ord_algo.str_algo(this.algo_data.kalgo); 
+      }
+      
       this.el.appendChild(this.formDiv);
       this.configureFormHandles();
       this.configure_checkbox('drawQuotes','do_quotes');  this.configure_checkbox('drawNBBO', 'do_nbbo');
@@ -2081,13 +2091,13 @@ const export_csv_data = function(data) {
   const ds = ((data.sells !== null) && (data.sells !== undefined) && (!(!(data.sells)))) ? data.sells : ((data.s !== null && data.s !== undefined) ? data.s : null);
 
   const headstr = "side,price,open,close,qty,ivs";
-  const bstr = db.vpi.map((x,ix) => (
+  const bstr = ((db !== null) ? db.vpi.map((x,ix) => (
     'B,' + db.u_p[db.vpi[ix]] + "," + db.open[ix] + ',' +  db.close[ix] + ',' + db.qty[ix] + "," + db.ivs[ix]
-  ));
-  const sstr = ds.vpi.map((x,ix) => (
+  )) : null);
+  const sstr = ((ds !== null) ? ds.vpi.map((x,ix) => (
     'S,' + ds.u_p[ds.vpi[ix]] + "," + ds.open[ix] + ',' +  ds.close[ix] + ',' + ds.qty[ix] + "," + ds.ivs[ix]
-  ));
-  return( headstr + "\n" + bstr.join("\n") + sstr.join("\n"));
+  )) : null);
+  return( headstr + "\n" + ((bstr !== null) ? bstr.join("\n") : '' ) + ((sstr !== null) ? sstr.join("\n") : ''));
 }
 const exports = {"obwidget": obwidget, 'export_csv_data':export_csv_data};
 //export default {"obwidget": obwidget};

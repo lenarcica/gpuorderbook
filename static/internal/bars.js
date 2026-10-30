@@ -202,8 +202,8 @@ const calc_side = function(drsd, ht, wd, qmax, pmin, pmax, squish_f) {
   return({'npi':npi, 'vpi': vpi, 'vp':vp, 'vqm': vqm, 'n_allpi': n_allpi});
 }
 const get_multi_time_qmax = function(dr) {
-  const qmax_b = drsd_time_max(dr.b);
-  const qmax_s = drsd_time_max(dr.s);
+  const qmax_b = drsd_time_qmax(dr.b);
+  const qmax_s = drsd_time_qmax(dr.s);
   const b0s1 = qmax_b.qmax >= qmax_s.qmax ? 0 : 1;
   return(b0s1 == 0 ? qmax_b : qmax_s);
 }
@@ -293,7 +293,7 @@ const get_relevant_data = function(data, timeX0, timeX1, targ_pmin, targ_pmax, p
   }
   let dr = {'b':rtb, 'idx':nfs, 's':rts, 'timeX':timeX, 'pmin':data.pmin, 'pmax':data.pmax, 'wd': data.bar_width, 
             'ht': data.height, 'unit':data.unit, 'st_time': data.st_time, 'timeX_bi': timeX_bi, 'idx_wpt':idx_wpt, 'b0w1':b0w1};
-  const qmt = (b0w1 == 0) ? get_one_time_qmax(dr) : get_multi_time_max(dr);
+  const qmt = (b0w1 == 0) ? get_one_time_qmax(dr) : get_multi_time_qmax(dr);
   dr['qmax'] = qmt.qmax;  dr['qmax_p'] = qmt.qmax_p;  dr['qmax_ps'] = qmt.qmax_ps;  dr['qmax_pi'] = qmt.qmax_pi;
   dr['pmin'] = data.pmin;  dr['pmax'] = data.pmax;
   if ((data.squish_f === null) || (data.squish_f === undefined) || (typeof(data.squish_f) != 'function')) {
