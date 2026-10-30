@@ -1168,7 +1168,7 @@ function Clear_Screen_RenderPass() {
  const renderPassDescriptor = {
   label: 'White Background RenderPass',
    colorAttachments: [ {
-     clearValue: [.9, .9, .9, 1], loadOp: 'clear', storeOp: 'store'}],
+     clearValue: clearValue, loadOp: 'clear', storeOp: 'store'}],
   };  
   return(renderPassDescriptor);
 }
