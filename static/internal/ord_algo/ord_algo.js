@@ -9,7 +9,7 @@
 //
 //
 import { MarketExchangeBook, TotalCurrentState, OneSideState, OneSideCombinedBook, Kalgo, str_kalgo, isin_Kalgo, check_mc_m_algo, 
-   calc_mc_m_algo, calc_mc_ir_algo} from "./ord_struct/index.js";
+   calc_mc_m_algo, calc_mc_ir_algo, sat_p} from "./ord_struct/index.js";
 const PRINTNAN = -1.0;
 const p_my_printer = require('../printer.js');
 const is_numeric = p_my_printer.is_numeric;
@@ -259,10 +259,18 @@ class PrintStruct {
   v_b_atq=null;v_x_atq=null; bi_st0=0n;
   n_change = 0; time_min = 0n;  time_max = 0n;
   w_sum_q = 0; w_sum_pq =0; w_nocc=0; w_avp=0; w_wp=0; w_atq=0; w_crit_pi=0; w_crit_p = 0;v_d=null; v_fd=null; d0fd1 = -1;
-  count_tu = {};
+  count_tu = {}; 
   wpt = null;
-  constructor({kalgo, nn, nk, nr, w_sum_q, w_sum_pq, w_nocc, w_avp, w_wp, w_atq, w_crit_pi, w_crit_p, verbose, d0fd1, v_d, v_fd, time_min, time_max, bi_st0}) {
-    this.kalgo = isin_Kalgo(kalgo); this.kalgostr = str_kalgo(this.kalgo);  this.verbose = Number(verbose);
+  constructor({kalgo, nn, nk, nr, w_sum_q, w_sum_pq, w_nocc, w_avp, w_wp, w_atq, w_crit_pi, w_crit_p, verbose_ob, d0fd1, v_d, v_fd, time_min, time_max, bi_st0}) {
+    this.kalgo = isin_Kalgo(kalgo); this.kalgostr = str_kalgo(this.kalgo);  
+    if ((verbose_ob == undefined) || (verbose_ob == null) || (typeof(verbose_ob) != 'object') || (verbose_ob.s == undefined) || (verbose_ob.s==null) ||
+        (verbose_ob.verbose == undefined) || (verbose_ob.verbose == null) || (typeof(verbose_ob.verbose) != 'number')) {
+      verbose_ob = {'s':[],'verbose':0}
+    }
+    this.verbose_ob =  verbose_ob;  this.verbose = this.verbose_ob.verbose;
+    const verbose = this.verbose;
+    this.PRINT_N = make_print_n(this.verbose_ob, "PrintStruct(): ");
+    const PRINT_N = make_print_n(this.verbose_ob, "PrintStruct::[constructor]:: ");
     if (this.verbose >= 1) {
       console.log(`new PrintStruct() start for nn=${nn}, nk=${nk}, nr=${nr}, kalgo=${str_kalgo(this.kalgo)} `);
     }
@@ -275,12 +283,13 @@ class PrintStruct {
     }
     this.v_best_bids = new best_vec({'nrp1':nrp1, 'nn':nn}); 
     this.v_best_asks = new best_vec({'nrp1':nrp1, 'nn':nn}); 
-    if (verbose >= 2) {
-      console.log(`ord_algo.rs->PrintStruct::new() moving to gen v_b_sum_q for w_sum_q=${w_sum_q}, nn=${nn}, nk=${nk}, nr=${nr}`);
-    }
+    DEBUG && PRINT_N(2,`ord_algo.rs->PrintStruct::new() moving to gen v_b_sum_q for w_sum_q=${w_sum_q}, nn=${nn}, nk=${nk}, nr=${nr}`);
+
+
     this.iprint = 0; this.count_tu = {};
     this.d0fd1 = d0fd1;
     this.v_d = (d0fd1 == 0 ?  v_d : v_fd); this.v_fd = (d0fd1==0) ? v_d : v_fd; 
+    DEBUG && PRINT_N(2, "Now investigating the w_sum and other elements.");
     const nf = (x) => ((x===undefined) || (x===null)) ? 0 : x;
     this.w_sum_q = nf(w_sum_q); this.w_sum_pq = nf(w_sum_pq); this.w_nocc=nf(w_nocc); this.w_avp=nf(w_avp); this.w_wp = nf(w_wp);
     this.w_atq = nf(w_atq); this.w_crit_pi = nf(w_crit_pi);  this.w_crit_p = nf(w_crit_p);
@@ -303,8 +312,10 @@ class PrintStruct {
     this.time_min = time_min; this.time_max = time_max;
     this.v_time = new BigInt64Array(Number(nn));
     this.bi_st0 = bi_st0;
+    DEBUG && PRINT_N(2, " Success constructing Print Struct");
   }
   shrink(timeX0_bi, timeX1_bi) {
+    const PRINT_N = this.PRINT_N;
     const iprint = this.iprint; const v_time = this.v_time;
     let ix_min = -1; let ix_max = v_time.length-1; // ix_min = -1; ix_max = v_time.length-1;
     for (let ii = 1; ii < iprint; ii++) { 
@@ -317,9 +328,10 @@ class PrintStruct {
       console.log(" Error, shrink: times [" + timeX0_bi + "," + timeX1_bi + "], but ix_min_max=[" + ix_min + "," + ix_max + "], new_nn=" + new_nn);
       debugger;
     }
+    DEBUG && PRINT_N(1, "Calling Shrink");
     let new_ps = new PrintStruct({'kalgo':this.kalgo, 'nn':new_nn, 'nk':this.nk, 'nr':this.nr, 'w_sum_q':this.w_sum_q,
       'w_sum_pq':this.w_sum_pq, 'w_nocc':this.w_nocc, 'w_avp':this.w_avp, 'w_wp':this.w_wp, 'w_atq':this.w_atq, 'w_crit_pi':this.w_crit_pi, 'w_crit_p':this.w_crit_p,
-      'verbose':this.verbose, 'd0fd1':this.d0fd1, 'v_d':this.v_d, 'v_fd':this.v_fd, 'time_min': timeX0_bi, 'time_max':timeX1_bi, 'bi_st0': this.bi_st0});
+      'verbose_ob':this.verbose_ob, 'd0fd1':this.d0fd1, 'v_d':this.v_d, 'v_fd':this.v_fd, 'time_min': timeX0_bi, 'time_max':timeX1_bi, 'bi_st0': this.bi_st0});
     new_ps.iprint = new_nn;
     new_ps.v_b_sum_q = (this.w_sum_q > 0) ? this.v_b_sum_q.shrink(ix_min, ix_max) : null;
     new_ps.v_s_sum_q = (this.w_sum_q > 0) ? this.v_s_sum_q.shrink(ix_min, ix_max) : null;
@@ -481,15 +493,16 @@ class PrintStruct {
       }
     }
   }
-  print_in_crit_p(v_v,tcs_side,xb_side) {
+  print_in_crit_p(v_v,tcs,xb,bs01) {
+    const PRINT_N = (DEBUG) ? make_print_n(this.verbose_ob, "print_in_crit_p(v_v=" + v_v+"): ") : null;
+    DEBUG && PRINT_N(1, " Initiating bs01 = " + bs01);
     if ((this[v_v] === null) || (this[v_v] === undefined)) { return; }
     let ik = 0; const iprint = this.iprint; let ir = 0; const nr = this[v_v].nr;
-    const v_p = xb_side.m.v_p;
+    const v_p = (bs01 == 0) ? xb.b.m.v_p : xb.s.m.v_p;
     if (this[v_v].k.length > 0) {
       for (ik=0;ik<this.nk;ik++) {
-        const on_wpi = (tcs_side).v_1ls[ik].crit_pi;
-        const on_wp = v_p[on_wpi];
-        this[v_v].k[ik][0][iprint] = on_wp
+        this[v_v].k[ik][0][iprint] = sat_p(tcs,xb,bs01,ik); 
+        DEBUG && PRINT_N(4, "Success calling sat_p");
       }
     }
   }
@@ -532,11 +545,14 @@ class PrintStruct {
       let isdiff = 0;
       for (let kk = 0; kk < list_u_c.length; kk++) {
         if ((list_u_c[kk] == 'v_best_bids') || (list_u_c[kk] == 'v_best_asks')) {
-          if (tthis[list_u_c[kk]].v[onr][tt] != tthis[list_u_c[kk]].v[onr][tt-1]) {
+          if (Number.isNaN(tthis[list_u_c[kk]].v[onr][tt]) && Number.isNaN(tthis[list_u_c[kk]].v[onr][tt-1])) {
+          } else if (tthis[list_u_c[kk]].v[onr][tt] != tthis[list_u_c[kk]].v[onr][tt-1]) {
             isdiff = 1; break;
           }
         } else {
-          if (tthis[list_u_c[kk]].k[onk][onr][tt] != tthis[list_u_c[kk]].k[onk][onr][tt-1]) {
+          if (Number.isNaN(tthis[list_u_c[kk]].k[onk][onr][tt]) && 
+              Number.isNaN(tthis[list_u_c[kk]].k[onk][onr][tt-1])) {
+          } else if (tthis[list_u_c[kk]].k[onk][onr][tt] != tthis[list_u_c[kk]].k[onk][onr][tt-1]) {
             isdiff = 1; break;
           }
         }
@@ -555,7 +571,7 @@ class PrintStruct {
     return(expl);
   }
   export_reduced_table_all_k(list_u_c, name_uc, onr) {
-    console.log("export_reduced_table: launched");
+    console.log("export_reduced_table_all_k: launched");
     const tthis = this;
     // list_u_c = ['v_best_bids','v_best_asks']; name_uc = ['nbb','nbo']; onk=0; onr=0;tthis = my_this.data.ps;
     let expl = {'time':[tthis.v_time[0]]};
@@ -573,12 +589,16 @@ class PrintStruct {
       let isdiff = 0;
       for (let jj = 0; jj < list_u_c.length; jj++) {
         if ((list_u_c[jj] == 'v_best_bids') || (list_u_c[jj] == 'v_best_asks')) {
-          if (tthis[list_u_c[jj]].v[onr][tt] != tthis[list_u_c[jj]].v[onr][tt-1]) {
+          if ((Number.isNaN(tthis[list_u_c[jj]].v[onr][tt])) && 
+              (Number.isNaN(tthis[list_u_c[jj]].v[onr][tt-1]))) {
+          } else if (tthis[list_u_c[jj]].v[onr][tt] != tthis[list_u_c[jj]].v[onr][tt-1]) {
             isdiff = 1; break;
           }
         } else {
           for (let kk = 0;kk < tthis[list_u_c[jj]].k.length;kk++) {
-            if (tthis[list_u_c[jj]].k[kk][onr][tt] != tthis[list_u_c[jj]].k[kk][onr][tt-1]) {
+            if ((Number.isNaN(tthis[list_u_c[jj]].k[kk][onr][tt])) &&
+                (Number.isNaN(tthis[list_u_c[jj]].k[kk][onr][tt-1]))) {
+            } else if (tthis[list_u_c[jj]].k[kk][onr][tt] != tthis[list_u_c[jj]].k[kk][onr][tt-1]) {
               isdiff = 1; break;
             }
           }
@@ -601,14 +621,16 @@ class PrintStruct {
     return(expl);
   }
   print_state(tcs, xb, curtime) {
+    const PRINT_N = (DEBUG) ? make_print_n(this.verbose_ob, "print_state()::: ") : this.PRINT_N;
     // tcs: total current state,
     // xb: State of MarketExchangeBook
     // curtime: Current time
+    DEBUG && PRINT_N(4, "Begin Print State.");
     this.n_change = 0;  // Might not print new values unless change
     const iprint = this.iprint + 0;
     if (iprint == 0) { this.n_change = 1; }
     if (this.iprint >= this.nn) {
-      console.log(`print_state(curtime=${curtime}): uh-oh, iprint=${iprint}, nn=${this.nn}.`);
+      PRINT_N(-6, `print_state(curtime=${curtime}): uh-oh, iprint=${iprint}, nn=${this.nn}.`);
     }
     const nr = xb.b.vr.length;
     const nk = tcs.b.v_1ls.length;
@@ -616,6 +638,7 @@ class PrintStruct {
 
     this.v_time[iprint] = BigInt(curtime);
     let ir=0;
+    DEBUG && PRINT_N(4, "Beginning more print N");
     //console.log("Lets look at print state."); debugger;
     for (ir=0;ir<nr;ir++) {
        if (xb.b.vr[ir].p0i < nbp) {
@@ -677,8 +700,10 @@ class PrintStruct {
     this.print_in_avp( "v_s_avp", tcs.s);
     this.print_in_crit_pi( "v_b_crit_pi", tcs.b );
     this.print_in_crit_pi( "v_s_crit_pi", tcs.s );
-    this.print_in_crit_p('v_b_crit_p',tcs.b,xb.b);
-    this.print_in_crit_p('v_s_crit_p',tcs.s,xb.s);
+
+    DEBUG && PRINT_N(4, " About to execute v_b_crit_p update.");
+    this.print_in_crit_p('v_b_crit_p',tcs,xb,0);
+    this.print_in_crit_p('v_s_crit_p',tcs,xb,1);
     const rec_change = this.n_change + 0;
     if (rec_change > 0) {
       this.iprint += 1;  this.n_change = 0;
@@ -983,18 +1008,18 @@ const order_algo =  function(oad,
   //t_ord.sort((t_ord_x,t_ord_y) => { return(vin_00_time[t_ord_x] < vin_00_time[t_ord_y]); }); 
   DEBUG && PRINT_N(1, " we have generated sorted t_ord of length ${t_ord.length}."); 
  
-  const xb = new MarketExchangeBook({"v_b_p_in":v_bprices, "v_s_p_in":v_sprices, "nr":nr, "verbose":v_ob.verbose});
+  const xb = new MarketExchangeBook({"v_b_p_in":v_bprices, "v_s_p_in":v_sprices, "nr":nr, "verbose_ob": {'s':[], 'verbose':v_ob.verbose}, "verbose":v_ob.verbose});
   //console.log("check xb"); debugger;
   DEBUG && PRINT_N(1, " Initiate new TotalCurrentState with kalgo = " + kalgo + ":" + str_kalgo(kalgo) + 
     ", v_d.length=" + (((v_d === undefined) || (v_d === null)) ? 0 : v_d.length) + "," + 
     " v_fd.length=" + (((v_fd === undefined) || (v_fd === null)) ? 0 : v_fd.length) + "."); 
   const tcs = new TotalCurrentState({"v_in_d":v_d, "v_in_fd":v_fd, "v_in_w":v_w, 
-    "nr":nr, "kalgo":kalgo, "np_b":v_bprices.length, "np_s":v_sprices.length, "verbose": v_ob.verbose});
+    "nr":nr, "kalgo":kalgo, "np_b":v_bprices.length, "np_s":v_sprices.length, 'verbose_ob': {'s':[], 'verbose':v_ob.verbose}, "verbose": v_ob.verbose});
 
 
   const ps = new PrintStruct(
      {"kalgo":kalgo, "nn":nt, "nk":nk, "nr":nr, "w_sum_q":w_sum_q, "w_sum_pq":w_sum_pq, "w_nocc":w_nocc,
-      "w_avp":w_avp, "w_wp":w_wp,  "w_atq":w_atq, 'w_crit_pi':w_crit_pi, 'w_crit_p':w_crit_p, "verbose":v_ob.verbose,
+      "w_avp":w_avp, "w_wp":w_wp,  "w_atq":w_atq, 'w_crit_pi':w_crit_pi, 'w_crit_p':w_crit_p, "verbose_ob":{'s':[], 'verbose':v_ob.verbose}, "verbose":v_ob.verbose,
       "d0fd1":tcs.d0fd1, "v_d":v_d, "v_fd": v_fd, "time_min":time_min, "time_max":time_max, 'bi_st0':oad.bi_st0});
   DEBUG && PRINT_N(1, ` Print Struct has been generated for w_sum_q=${w_sum_q}, ` +  
                 `w_sum_pq=${w_sum_pq}, w_avp=${w_avp}, w_wp=${w_wp}`); 
@@ -1079,7 +1104,7 @@ const order_algo =  function(oad,
                                    ((on_bs01===0) ? xb.b.m.v_q[on_pi] : xb.s.m.v_q[on_pi]) );
     if (DEBUG) {
       if ((v_ob.verbose >= 5) || ((v_ob.verbose >= 2) && (ii_n % 1000 == 0))) {
-        PRINT_N(2, "(ii_n=${ii_n}, " +
+        PRINT_N(2, " (DEBUG TEST CHALLENGE) (ii_n=${ii_n}, " +
                   ((on_bs01==0) ? ("ii_b="+ii_b + "/" + oad.b.vt.length) : ("ii_s="+ii_s+"/" + oad.s.vt.length)) + 
                   "\"" + tcs.b.kalgo + "\") " +
                   `(sd,pi($p),ir,q)=(${(on_bs01==0)? 'B' : 'S'},${on_pi}/(${on_p}),` +
@@ -1099,6 +1124,7 @@ const order_algo =  function(oad,
     }}
     d_code_r = 0;
     if (old_q === on_new_q) {
+      DEBUG && PRINT_N(4, " [NoMarketChange] : Questionable event of value ");
       // NOTHING TO DO THIS CASE, registrant or Market
       tu = TypeUpdate.NoMarketChange; d_code = 0;
       ps.update_tu(tu);
@@ -1135,7 +1161,7 @@ const order_algo =  function(oad,
            }
 
            if ((n_err === 0) && (v_ob.verbose >= 3)) {
-             PRINT_N(3, "ii_n=" + ii_n + "/" + nt + ", " +
+             PRINT_N(3, " [on_r was updated] ii_n=" + ii_n + "/" + nt + ", " +
                ((on_bs01==0) ? ("ii_b=" + ii_b + "/" + nt_b) : 
                         ("ii_s=" + ii_s + "/" + nt_s) ) + " PASS CHECK, nerr=0.");
            }
@@ -1143,6 +1169,7 @@ const order_algo =  function(oad,
       }
       ps.update_tu(tu);
     } else if (on_new_q <= 0.0) { 
+      DEBUG && PRINT_N(4, " Check Delete Market Event on_new_q=" + on_new_q);
       if ( ((on_bs01 == 0) && (on_pi == xb.b.m.p0i)) ||
            ((on_bs01 == 1) && (on_pi == xb.s.m.p0i)) )  {
         if (((on_bs01 == 0) && (xb.b.m.nocc == 1)) || 
@@ -1158,27 +1185,33 @@ const order_algo =  function(oad,
         tu = TypeUpdate.DelMarketOtherPrice;
       } 
     } else {
+      DEBUG && PRINT_N(4, " Check Quantity Positive.");
       // Cleaned up duplication in definition of tu in a marketable case
       //  Because sprices reverse sorted and bprices sorted increasing, we can use
       //  on_pi > old_mp0i as proxy for "new best price"
       if (np<=old_mp0i) {
         // Empty market add a best price
+        DEBUG && PRINT_N(4, " --- Completely New Market best price");
         d_code = tcs.completely_new_market_best_price(xb, on_bs01, on_pi, on_new_q);   
         tu = TypeUpdate.CompletelyNewMarket;
       } else if (on_pi > old_mp0i) {
+        DEBUG && PRINT_N(4, " --- new_market_best_price");
         d_code = tcs.new_market_best_price(xb, on_bs01, on_pi, on_new_q);   
         tu = TypeUpdate.NewMarketBestPrice; 
       } else if (old_q <= 0.0) {
+        DEBUG && PRINT_N(4, " -- new_market_other_price");
         d_code = tcs.new_market_other_price(xb, on_bs01, on_pi, on_new_q);
         tu = TypeUpdate.NewMarketOtherPrice;
       } else {
+        DEBUG && PRINT_N(4, " -- ModMarketExistQty");
         d_code = tcs.mod_qty_at_price(xb, on_bs01, on_pi, on_new_q);
         tu = TypeUpdate.ModMarketExistQty;
       }
     }  
+    DEBUG && PRINT_N(4, " Type updates complete tu is now " + tu);
     if (DEBUG) {
       if ((verbose >= 5) || ((verbose >= 2) && (BigInt(ii_n) % BigInt(1000) == 0n))) {
-        PRINT_N(2, "ii_n=" + ii_n + "/" + nt + " -- Update, before Checkbook, upd_type=\"" + str_tu(tu) + "\", " + 
+        PRINT_N(2, "[verbose 5 check] ii_n=" + ii_n + "/" + nt + " -- Update, before Checkbook, upd_type=\"" + str_tu(tu) + "\", " + 
           `d_code=${d_code}, ${(on_bs01===0 ? "b":"s")}.crit_pi[0] = ` + 
           ((on_bs01 == 0) ? (tcs.b.v_1ls[0].crit_pi) : (tcs.s.v_1ls[0].crit_pi)) );
       }
@@ -1189,7 +1222,7 @@ const order_algo =  function(oad,
       // patient check and validates the faster calculation
       n_err = check_mc_m_algo(kalgo, xb, tcs, ii_n, ((on_bs01==0) ? ii_b: ii_s), nt, on_bs01, old_p0i, str_tu(tu));
       if ((n_err === 0) && (verbose >= 3)) {
-        PRINT_N(3, "ii_n=" + ii_n + "/" + nt + ", " +
+        PRINT_N(3, "[after check_mc_m_algo] ii_n=" + ii_n + "/" + nt + ", " +
         ((on_bs01==0) ? ("ii_b=" + ii_b + "/" + nt_b) : 
                         ("ii_s=" + ii_s + "/" + nt_s) ) + " PASS CHECK, nerr=0.");
       }
@@ -1237,6 +1270,7 @@ const order_algo =  function(oad,
       }
       if (n_err > 0) { return("ERROR"); }
     }
+    DEBUG && PRINT_N(4, "[Check Print Code]: " + d_code);
     if (d_code < 0) {
       PRINT_N(-6, "Error state, d_code returned of type " + d_code + ", d_code_r=" + d_code_r + 
                ", for update of type " + str_tu(tu) + ", n_err was " + n_err + (", [ii_n=" + ii_n + "/" + nt + ",") +
@@ -1258,10 +1292,13 @@ const order_algo =  function(oad,
                           )
                       )
                    );
+     DEBUG && PRINT_N(4, "[Update tu event]: tu=" + tu);
      ps.update_tu(tu);
+     DEBUG && PRINT_N(4, "[Update tu concluded]: check on_t versus time_min");
      if (on_t <= time_min) {
       if (next_t > time_min) {
         const old_iit = ps.iprint;
+        DEBUG && PRINT_N(4, " --- Initiate ps.print_state. time_min is " + time_min);
         const nch = ps.print_state(tcs, xb, BigInt(time_min));
         if (DEBUG) {
           if (verbose >= 2) {
@@ -1279,6 +1316,7 @@ const order_algo =  function(oad,
       }
     } else if (next_t > on_t) {
       const old_iit = ps.iprint;
+      DEBUG && PRINT_N(4, "ps.print_state activate: next_t event.");
       const nch = ps.print_state(tcs, xb, BigInt(on_t));
       if (verbose >= 3) {
         if (old_iit != ps.iprint) {
@@ -1294,7 +1332,7 @@ const order_algo =  function(oad,
       break;
     }
     if ((ii_n >= nt-1) || (next_t > time_max)) {
-      DEBUG && PRINT_N(1, "We reach time_max=" + time_max + ", for ii_n=" + ii_n + "/" + nt + "," + 
+      DEBUG && PRINT_N(1, "[time max event] We reach time_max=" + time_max + ", for ii_n=" + ii_n + "/" + nt + "," + 
             ((on_bs01==0) ? ("ii_b="+ii_b+"/"+oad.b.vt.length) : ("ii_s="+ii_s+"/"+oad.s.vt.length))  +
            " for time=" + on_t + ", next_t = " + next_t);
       break;

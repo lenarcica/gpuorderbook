@@ -28,8 +28,8 @@ class OneSideBook {
   bs="b";bs01=0;np=0;p0i=0;
   v_p=[0.0]; v_q=[0]; v_nxt=[0]; v_prv=[0];
   p_wi = 0; tot_q = 0; tot_pq = 0;
-  nocc = 0;
-  constructor({bs01, v_p_in}) {
+  nocc = 0; verbose_ob = null;
+  constructor({bs01, v_p_in, verbose_ob}) {
     //bs: Type Buy Sell
     //v_p_in: vector of type price
     const np = v_p_in.length;
@@ -40,6 +40,7 @@ class OneSideBook {
     this.v_prv = Array(np).fill(np); 
     this.p_wi = np; this.tot_q = 0;  this.tot_pq = 0;
     this.nocc = 0; this.p0i = np;
+    this.verbose_ob = verbose_ob;
 
     //let v_p = [...v_p_in];
     //v_p.sort();
@@ -51,25 +52,26 @@ class OneSideBook {
   }
 }
 class OneSideCombinedBook {
-  bs="b"; bs01=0; m = {}; vr=[{}]; np = 0;
-  constructor({bs01, v_p_in, nr}) {
+  bs="b"; bs01=0; m = {}; vr=[{}]; np = 0; nr = 0; verbose_ob = null;
+  constructor({bs01, v_p_in, nr, verbose_ob}) {
+    this.verbose_ob = verbose_ob;
     if ((v_p_in === undefined) || (v_p_in === null) || (v_p_in===false)) {
       console.log("ERROR OneSideCombinedBook: v_p_in not supplied is null please re-construct");
     }
     this.bs = (bs01 == 0) ? 'b' : 's';
     this.bs01 = bs01;
-    this.vr = [];
+    this.vr = []; this.nr = nr;
     // For silly reasons "_ir" is unused?
     for (let ir=0; ir < nr; ir++) {
       this.vr.push(new OneSideBook({'bs01':bs01, 'v_p_in':v_p_in}));
     }
-    this.m = new OneSideBook({'bs01':bs01,'v_p_in':v_p_in});
+    this.m = new OneSideBook({'bs01':bs01,'v_p_in':v_p_in, 'verbose_ob': this.verbose_ob});
     this.np = v_p_in.length;
   }
 }
 class MarketExchangeBook {
   b={}; s={}; verbose = -1;  verbose_ob={'s':[],verbose:-1}; nr = 0;
-  constructor({v_b_p_in, v_s_p_in, nr, verbose}) {
+  constructor({v_b_p_in, v_s_p_in, nr, verbose_ob, verbose}) {
     if ((v_b_p_in === undefined) || (v_b_p_in === null) || (v_b_p_in === false)) {
       console.log("MarketExchangeBook: Error: v_b_p_in supplied is invalid."); debugger;
       return(null);
@@ -78,9 +80,18 @@ class MarketExchangeBook {
       console.log("MarketExchangeBook: Error: v_s_p_in supplied is invalid."); debugger;
       return(null);
     }
-    this.b = new OneSideCombinedBook({"bs":"b", "bs01":0, "v_p_in":v_b_p_in, "nr":nr});
-    this.s = new OneSideCombinedBook({"bs":"s", "bs01":1, "v_p_in":v_s_p_in, "nr":nr});
-    this.verbose_ob={'s':[],'verbose':verbose}; this.nr = nr;
+    if ((verbose_ob == null) || (verbose_ob == undefined) || (verbose_ob.s == null) || (verbose_ob.s == undefined) || (verbose_ob.verbose == null) ||
+        (verbose_ob.verbose == undefined)) {
+      if ((verbose == null) || (verbose == undefined) || (verbose <= 0)) {
+      } else {
+        verbose_ob = {'s':[], verbose}; this.verbose_ob = verbose_ob;
+      }
+    } else {
+      this.verbose_ob = verbose_ob; this.verbose = verbose_ob.verbose;  verbose = this.verbose_ob.verbose;
+    }
+    this.nr = nr;
+    this.b = new OneSideCombinedBook({"bs":"b", "bs01":0, "v_p_in":v_b_p_in, "nr":nr, 'verbose_ob':this.verbose_ob});
+    this.s = new OneSideCombinedBook({"bs":"s", "bs01":1, "v_p_in":v_s_p_in, "nr":nr, 'verbose_ob':this.verbose_ob});
     this.verbose = verbose;
   }
 }
@@ -139,16 +150,70 @@ const und_str_kalgo = function(int_kalgo) {
   return(undKalgo[skalgo]);
 }
 
+
+const sat_p = function(tcs, xb, bs01, ik) {
+  const dcs = (bs01==0) ? tcs.b : tcs.s;
+  const kalgo = dcs.kalgo;
+  if (kalgo == Kalgo.ExpDepth) { return(Number.NaN); }
+  if ((kalgo == Kalgo.Unknown) || (kalgo < 0)) { return(Number.NaN); }
+  const np = (bs01==0) ? (xb.b.np) : (xb.s.np);
+  const dxb = (bs01==0) ? xb.b : xb.s;
+  const nk = dcs.v_1ls.length;  
+  if ((ik >= nk) || (ik < 0)) { return(Number.NaN); }
+  const crit_pi = dcs.v_1ls[ik].crit_pi;
+  if (crit_pi >= np) { return(Number.NaN); }
+  if (dxb.m.p0i == np) { return(Number.NaN); }
+  const p0i = dxb.m.p0i; const p0 = dxb.m.v_p[dxb.m.p0i];
+  const crit_p = dxb.m.v_p[crit_pi];
+  if (kalgo == Kalgo.NumFilled) {
+    if (dcs.v_1ls[ik].m_nocc >= dcs.v_1ls[ik].d) { return(dxb.m.v_p[dcs.v_1ls[ik].m_worstpi]) }
+    return(Number.NaN);
+  }
+  if (kalgo == Kalgo.NumAll) {
+    return((Math.abs(p0i-crit_pi) >= dcs.v_1ls[ik].d) ? crit_p : Number.NaN);
+  }
+  if (kalgo == Kalgo.NumShares) {
+    if (dcs.v_1ls[ik].m_csumq >= dcs.v_1ls[ik].d) { return(dxb.m.v_p[dcs.v_1ls[ik].m_worstpi]) }
+    return(Number.NaN);
+  }
+  if (kalgo == Kalgo.NumPennies) {
+    if (bs01 == 0) {
+      return( (p0 - dcs.v_1ls[ik].fd <=0) ? Number.NaN : (p0 - dcs.v_1ls[ik].fd) );
+    } 
+    return( (p0 + dcs.v_1ls[ik].fd) );
+  }
+  if (kalgo == Kalgo.MultipleSpread) {
+    if ((xb.b.m.p0i >= xb.b.m.v_p.length) || (xb.s.m.p0i >= xb.s.m.v_p.length)) { return(Number.NaN); }
+    const spread = xb.s.m.v_p[xb.s.m.p0i] - xb.b.m.v_p[xb.b.m.p0i];
+    if (spread <= 0) { return(Number.NaN); }
+    if (bs01 == 0) {
+      return( (p0 - dcs.v_1ls[ik].fd*spread < 0) ? Number.NaN : (p0-dcs.v_1ls[ik].fd*spread).toFixed(2));
+    }
+    return( (p0 + dcs.v_1ls[ik].fd*spread).toFixed(2));
+  }
+  if (kalgo == Kalgo.TotalDollars) {
+    if (dcs.v_1ls[ik].m_csumpq >= dcs.v_1ls[ik].fd) { return(dxb.m.v_p[dcs.v_1ls[ik].m_worstpi]) }
+    return(Number.NaN);
+  }
+  if (kalgo == Kalgo.PctDepth) {
+    if (bs01 == 0) {
+      if (dcs.v_1ls[ik].fd > 1.0) { return(Number.NaN); }
+      return( ((1.0-dcs.v_1ls[ik].fd) * p0).toFixed(2));
+    }
+    return( ((1.0+dcs.v_1ls[ik].fd) * p0).toFixed(2) )
+  }
+  return(Number.NaN);
+}
 class OneLevelState {
-  d = 0n; fd = 0.0;
+  d = 0n; fd = 0.0; np = 0;
   d0fd1 = 0; crit_pi = 0;
   m_nocc = 0;  m_csumq = 0;
   m_csumpq = 0; m_worstpi = 0; m_atq = 0;
   vr_nocc = []; vr_csumq = []; vr_csumpq = [];
   vr_worstpi = [];
-  vr_atq = [];
-  constructor({d,fd,d0fd1,np,nr}) {
-    this.fd = d0fd1 == 0 ? -1.0 : fd;
+  vr_atq = []; verbose_ob = null; PRINT_N = function(n,str) { if (n<0) { console.log(str) }};
+  constructor({d,fd,d0fd1,np,nr, verbose_ob}) {
+    this.fd = d0fd1 == 0 ? -1.0 : fd; this.np = np;
     this.d = d; this.d0fd1 = d0fd1;
     this.crit_pi = 0;  this.m_nocc = 0; this.m_csumq = 0;
     this.m_csumpq = 0; this.m_worstpi = np;
@@ -157,7 +222,10 @@ class OneLevelState {
     this.vr_csumq = Array(np).fill(0);
     this.vr_csumpq = Array(np).fill(0);
     this.vr_worstpi = Array(np).fill(np);
-    this.vr_atq = Array(np).fill(0);
+    this.vr_atq = Array(np).fill(0);  this.verbose_ob = verbose_ob;
+    if (DEBUG) {
+      this.PRINT_N = make_print_n(verbose_ob, "OneLevelState");
+    }
   }
   quality_check(ik, ir, nocc, csumq, worstpi, csumpq) {
     let n_err = 0;
@@ -211,6 +279,8 @@ class OneLevelState {
     if (crit_pi >= np) {
       console.log("OneLevelState.move_in_to_crit: This doesn't work NP given, We cannot be Moving In.  Deleting all prices: ERROR");
       console.log(`crit_pi=${crit_pi}, np=${np} for ik=${ik}`);
+      DEBUG && this.PRINT_N(-6, "OneLevelState.move_in_to_crit: This doesn't work NP given, We cannot be Moving In.  Deleting all prices: ERROR");
+      DEBUG && this.PRINT_N(-6,`crit_pi=${crit_pi}, np=${np} for ik=${ik}`);
       console.log("---   Error "); return(-1001);
     }
     if (crit_pi == 0) {
@@ -222,7 +292,6 @@ class OneLevelState {
          this.vr_csumpq[ir] = dxb.vr[ir].v_q[dxb.vr[ir].p0i] *
                                  dxb.vr[ir].v_p[dxb.vr[ir].p0i];
          this.vr_nocc[ir] = 1;
-         this.vr_worstpi[ir] = dxb.vr[ir].p0i;
       }
       while (this.vr_worstpi[ir] < crit_pi) {
          this.vr_csumq[ir] -= dxb.vr[ir].v_q[this.vr_worstpi[ir]];
@@ -317,44 +386,56 @@ class OneSideState {
   m_wsumpq = 0.0; vr_wsumpq = [];
   m_worstpi = -1; vr_worstpi = [];
   m_wnocc = 0; vr_wnocc = [];
-  m_onw = 0;  vr_onw = []; d0fd1=-1;
-  constructor({bs, v_in_d, v_in_fd, v_in_w, nr, kalgo, np}) {
+  m_onw = 0;  vr_onw = []; d0fd1=-1; verbose_ob = null; PRINT_N = null;
+  constructor({bs, v_in_d, v_in_fd, v_in_w, nr, kalgo, np, verbose_ob}) {
     this.bs = bs.toLowerCase(); this.nr = nr; this.np = np;
     let v_1ls = [];
     this.bs01 = (this.bs==='b') ? 0 : 1;
     this.kalgo = isin_Kalgo(kalgo);
+    this.verbose_ob = (((verbose_ob !== null) && (verbose_ob !== undefined) & (!(!verbose_ob))) ? verbose_ob : null);
+    if (!(DEBUG)) {
+      this.PRINT_N = function(x, str) { if (x <= 0) { console.log(str); } }
+    } else {
+      if (this.verbose_ob !== null)  {
+        this.PRINT_N = make_print_n(this.verbose_ob, "OneSideState::");
+      }
+    }
+    const PRINT_N = this.PRINT_N;
     if ((this.kalgo === undefined) || (this.kalgo === null) || (this.kalgo === Kalgo.Unknown)) {
-      console.log("OneSideState: Error, this.kalgo determined to be " + 
+      this.PRINT_N(-6, "OneSideState: Error, this.kalgo determined to be " + 
         this.kalgo + ":" + str_kalgo(this.kalgo));
     }
     this.d0fd1 = get_d0fd1(kalgo);
     const d0fd1 = this.d0fd1;
-    console.log("OneSideState: kalgo=" + kalgo + ":" + str_kalgo(kalgo) + ", d0fd1 = " + d0fd1);
+    DEBUG && this.PRINT_N(1, "OneSideState[constructor]: kalgo=" + kalgo + ":" + str_kalgo(kalgo) + ", d0fd1 = " + d0fd1);
     let v_d = []; let v_fd = [];
     let ii = 0;
     const n_ld = (d0fd1 == 0) ? v_in_d.length : v_in_fd.length;
     this.v_1ls = [];
     if (d0fd1 === 0) {
       if ((v_in_d === undefined) || (v_in_d === null) || (v_in_d === false) || (v_in_d.length <= 0)) {
-        console.log("new OneSideState(bs="+bs+",d0fd1="+d0fd1+",kalgo=" + kalgo + ":" + str_kalgo + "): " + 
+        this.PRINT_N(-6,"new OneSideState(bs="+bs+",d0fd1="+d0fd1+",kalgo=" + kalgo + ":" + str_kalgo + "): " + 
           "Error, v_in_d supplied is defective somehow"); debugger;
       }
+      this.PRINT_N(2, "OneSideState[constructor]: Beginning to take v_in_d");
       v_d = (!(v_in_d)) ? [] : [...v_in_d];
       v_d.sort((x,y)=>{ return(x< y) });
       for (ii = 0; ii < n_ld; ii++) {
-        this.v_1ls.push(new OneLevelState({'d':v_d[ii], 'fd':-1.0, 'd0fd1':d0fd1, 'np':np,'nr':this.nr}));
+        this.v_1ls.push(new OneLevelState({'d':v_d[ii], 'fd':-1.0, 'd0fd1':d0fd1, 'np':np,'nr':this.nr, 'verbose_ob':this.verbose_ob, 'verbose':this.verbose_ob.verbose}));
       } 
     } else {
       if ((v_in_fd === undefined) || (v_in_fd === null) || (v_in_fd === false) || (v_in_fd.length <= 0)) {
-        console.log("new OneSideState(bs="+bs+",d0fd1="+d0fd1+",kalgo=" + kalgo + ":" + str_kalgo + "): " + 
+        this.PRINT_N(-6, "new OneSideState(bs="+bs+",d0fd1="+d0fd1+",kalgo=" + kalgo + ":" + str_kalgo + "): " + 
           "Error, v_in_fd supplied is defective somehow"); debugger;
       }
+      DEBUG && this.PRINT_N(2, "OneSideState[constructor]: Beginning to take v_in_fd");
       v_fd = (!(v_fd)) ? [] : [...v_in_fd];
       v_fd.sort((x,y)=>{ return(x<y) });
       for (ii = 0; ii < n_ld; ii++) {
-        this.v_1ls.push(new OneLevelState({'fd':v_fd[ii], 'd':-1.0, 'd0fd1':d0fd1, 'np':np,'nr':this.nr}));
+        this.v_1ls.push(new OneLevelState({'fd':v_fd[ii], 'd':-1.0, 'd0fd1':d0fd1, 'np':np,'nr':this.nr, 'verbose_ob':this.verbose_ob, 'verbose':this.verbose_ob.verbose}));
       }
     }
+    DEBUG && this.PRINT_N(2, "OneSideState[constructor]: Constructing v_w");
     let v_w = (!(v_in_w)) ? [] : [...v_in_w];
     v_w = v_w.sort((v,w)=> { return(v<w); });
     this.v_w = v_w; this.v_d=v_d; this.v_fd = v_fd;  
@@ -362,11 +443,12 @@ class OneSideState {
     this.vr_wsumpq = Array(this.nr).fill(0);
     this.vr_worstpi = Array(this.nr).fill(0);
     this.vr_onw = Array(this.nr).fill(0.0);
+    DEBUG && this.PRINT_N(2, "OneSideState[constructor]: Concluded work.");
   }
   wp_b_move_in_no_force(ik, xb) {
     const dxb = (this.bs01 === 0) ? (xb.b) : (xb.s);
     if (this.v_1ls[ik].m_worstpi == dxb.m.p0i) {
-      console.log("OneSideState: Error, can't move past p0i={}", dxb.m.p0i);
+      this.PRINT_N(-6, "OneSideState: Error, can't move past p0i={}", dxb.m.p0i);
       return(-1);
     }
     const new_worstpi = dxb.m.v_prv[this.v_1ls[ik].m_worstpi];
@@ -386,7 +468,7 @@ class OneSideState {
   wp_b_move_out_no_force(ik, xb) {
     const dxb = (this.bs === 0) ? (xb.b) : (xb.s);
     if (this.v_1ls[ik].m_worstpi == dxb.m.p0i) {
-      console.log(`OneSideState: Error, can't move past p0i=${dxb.m.p0i}`);
+      this.PRINT_N(-6, `OneSideState: Error, can't move past p0i=${dxb.m.p0i}`);
       return(-1);
     }
     const new_worstpi = dxb.m.v_nxt[this.v_1ls[ik].m_worstpi];
@@ -404,11 +486,10 @@ class OneSideState {
     return(1);
   }
   wp_b_move_in_enforced(ik, xb) {
-    const PRINT_N = make_print_n(xb.verbose_ob, "wp_b_move_in_enforced");
     // For move in we really only need the same side market/related book
     let dxb = (this.bs01 === 0)  ? (xb.b) : (xb.s); 
     if (this.v_1ls[ik].m_worstpi == dxb.m.p0i) {
-      PRINT_N(-6, `OneSideState: Error, can't move past p0i=${dxb.m.p0i}`);
+      this.PRINT_N(-6, `OneSideState: Error, can't move past p0i=${dxb.m.p0i}`);
       return(-1);
     }
     // Note enforcement doesn't happen on exo_decay type
@@ -445,6 +526,7 @@ class OneSideState {
     return(1);
   }
   wp_b_move_out_enforced(ik, xb) {
+    const PRINT_N = this.PRINT_N;
     // For move out, we might get to add bonus quantity on all of the items. 
     const dxb = (this.bs01 === 0) ? (xb.b) : (xb.s); 
     const np = dxb.m.np; let nr = dxb.vr.length;
@@ -744,21 +826,35 @@ class OneSideState {
 class TotalCurrentState {
   kalgo = Kalgo.Unknown; b=null; s = null;
   verbose = 0; verbose_ob = {'s':[], verbose:0}; nk = 0; d0fd1 = -1;  nr = 0;
-  constructor({v_in_d, v_in_fd, v_in_w, nr, kalgo, np_b, np_s, verbose}) {
+  PRINT_N=function(n,str) { if (n < 0) { console.log(str); } }
+  constructor({v_in_d, v_in_fd, v_in_w, nr, kalgo, np_b, np_s, verbose_ob, verbose}) {
+    if ((verbose_ob == undefined) || (verbose_ob == null) || (verbose_ob.s == undefined) || (verbose_ob.s == null) ||
+        (verbose_ob.verbose == undefined) || (verbose_ob.verbose == null)) {
+      if (typeof(verbose) == 'number') {  
+        verbose_ob = {'s':[], 'verbose':verbose};
+      } else {
+        verbose_ob = {'s':[],'verbose':0}
+      }
+    }
+    this.verbose_ob = verbose_ob; this.verbose = verbose_ob.verbose;
+    if (this.verbose_ob.verbose >= 0) {
+      this.PRINT_N = make_print_n(this.verbose_ob, "TotalCurrentState(): ");
+    }
+    DEBUG && this.PRINT_N(1, "TotalCurrentState: Initiate Constructor");
+    DEBUG && this.PRINT_N(1, "TotalCurrentState: Initiate isin_Kalgo");
     this.kalgo = isin_Kalgo(kalgo);
     if (this.kalgo === Kalgo.Unknown) {
-      console.log("new: TotalCurrentState(kalgo supplied is Unknown!");
+      this.PRINT_N(-6, "new: TotalCurrentState(kalgo supplied is Unknown!");
       return(-1);
     }
     this.d0fd1 = get_d0fd1(this.kalgo);
     this.nk = (this.d0fd1 == 0) ? v_in_d.length : v_in_fd.length;
     this.nr = nr;
+    DEBUG && this.PRINT_N(1, "TotalCurrentState: initiating OneSideStates.");
     this.b = new OneSideState({'bs':"b", 'v_in_d':v_in_d, 'v_in_fd':v_in_fd, 
-      'v_in_w':v_in_w, 'nr':nr, 'kalgo':this.kalgo, 'np':np_b});
+      'v_in_w':v_in_w, 'nr':nr, 'kalgo':this.kalgo, 'np':np_b, 'verbose_ob':this.verbose_ob, 'verbose':this.verbose_ob.verbose});
     this.s = new OneSideState({'bs':"s", 'v_in_d':v_in_d, 'v_in_fd':v_in_fd, 
-      'v_in_w':v_in_w, 'nr':nr, 'kalgo':this.kalgo, 'np':np_s});
-    this.verbose = verbose;
-    this.verbose_ob = {'s':[],verbose:verbose};
+      'v_in_w':v_in_w, 'nr':nr, 'kalgo':this.kalgo, 'np':np_s, 'verbose_ob':this.verbose_ob, 'verbose':this.verbose_ob.verbose});
   }
   test_tcs_state_no_mkt(bs01, xb) {
     if (DEBUG) {
@@ -806,4 +902,4 @@ class TotalCurrentState {
 
 
 
-export {Kalgo, isin_Kalgo, str_kalgo, und_str_kalgo, TotalCurrentState, OneLevelState,OneSideState, OneSideBook, OneSideCombinedBook, MarketExchangeBook, make_print_n};
+export {Kalgo, isin_Kalgo, str_kalgo, und_str_kalgo, TotalCurrentState, OneLevelState,OneSideState, OneSideBook, OneSideCombinedBook, MarketExchangeBook, make_print_n, sat_p};
