@@ -47,6 +47,13 @@ const install_debug_button = function(my_this) {
   my_this.debug_button.addEventListener('click', click_func); 
   my_this.debug_button.addEventListener('onClick', click_func); 
   my_this.buttonDiv.appendChild(my_this.debug_button);
+  if ((my_this.widgetDiv !== undefined) && (my_this.widgetDiv !== null)) {
+    my_this.widgetDiv.addEventListener("keydown", (event) => {
+      if (event.key === "d") { click_func(event); }
+    });
+  } else {
+    my_this.debug_button.click_func = click_func;
+  }
   DEBUG && PRINT_N(1, ":: Debug button installed.");
 }
 const install_blank_button = function(my_this) {

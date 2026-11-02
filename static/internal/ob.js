@@ -414,6 +414,29 @@ class obwidget {
     if (!(!(this.data.buys))) { this.data.buys.vpi = this.data.buys.price.map((x)=>this.data.buys.u_p.indexOf(x)); }
     if (!(!(this.data.sells))) { this.data.sells.vpi = this.data.sells.price.map((x)=>this.data.sells.u_p.indexOf(x)); }
 
+    // Logical sort pattern
+    //console.log("configure data sort"); debugger;
+    if ((!(!(this.data.buys))) && (this.data.buys.vpi.length > 0)) { 
+      const bsort = function(a,b) {
+        if (my_this.data.buys.price[a] == my_this.data.buys.price[b]) { 
+         return(my_this.data.buys.open[a]-my_this.data.buys.open[b]) 
+        } else { 
+         return(my_this.data.buys.price[a]-my_this.data.buys.price[b]) 
+        } 
+      };
+      this.data.buys.srt_buys = this.data.buys.open.map((_,i)=>i).sort(bsort);
+    }
+
+    if ((!(!(this.data.sells))) && (this.data.sells.vpi.length > 0)) {
+      const ssort = function(a,b) {
+             if (my_this.data.sells.price[a] == my_this.data.sells.price[b]) { 
+               return(my_this.data.sells.open[a]-my_this.data.sells.open[b]) 
+             } else { 
+               return(my_this.data.sells.price[a]-my_this.data.sells.price[b]) }
+      };
+      this.data.sells.srt_sells = my_this.data.sells.open.map((_,i)=>i).sort(ssort);
+    }
+
     DEBUG && PRINT_N(1, " Calculating unique Venues.");
     this.data.unique_venues = [...new Set([...((this.data.buys !== null) && (!(!(this.data.buys.vs)))) ? this.data.buys.vs : [],
                                       ...((this.data.sells !== null) && (!(!(this.data.sells.vs)))) ? this.data.sells.vs: []])].sort();
@@ -735,7 +758,7 @@ class obwidget {
         PRINT_N(0, "ERROR configureWidgetGPU - this.data does not have width configured yet."); debugger;
       }
       this.margins =  {'left': Math.floor(this.data.width * .35), 'top': Math.floor(this.data.height)*.15, 'bottom': Math.floor(this.data.height)*.7, itm:.1, 'right':Math.floor(this.data.width*.2) }
-
+      const my_this = this;
       this.configureForm();
 
       this.widgetDiv = document.createElement('div');
@@ -759,6 +782,15 @@ class obwidget {
       this.widgetDiv.setAttribute('width', (widget_width) + 'px');
       // BACKGROUND -- Set to BLACK for REGL plot
       this.widgetDiv.style.background = 'var(--jp-layout-color0)';
+      if ((DEBUG) && (this.debug_button !== null) && (this.debug_button !== undefined)) {
+        // Keystroke Debugger
+        this.widgetDiv.addEventListener("keydown", (event) => {  
+           console.log("key is down is " + event.key); 
+           if (event.key === "1") { this.debug_button.click_func(event); } }); 
+        this.widgetDiv.addEventListener("dblclick", (event) => {  
+           console.log("Dblclick Debugger mode");  this.widgetDiv.dblevent = event;
+           this.debug_button.click_func(event); }); 
+      }
       this.el.appendChild(this.widgetDiv);
 
 
