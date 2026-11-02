@@ -14,6 +14,7 @@ require('./tooltip.css');
 const string_del_tm = pretty_num.string_del_tm;
 const printer = require("./printer.js");
 const is_numeric = printer.is_numeric; const is_positive_numeric = printer.is_numeric;
+const dPRINT_N = printer.make_print_n({'s':[], verbose:0},'svg_ob.js():::');
 
 var prop_mo = {'nText':'', 'tipText':'', n_wp: 0, n_nbbo: 0, n_buys: 0, n_sells: 0, n_trades: 0,
               'wp': {'ntm':-1, 'ltm':-1, 'fd_text':''},
@@ -200,45 +201,38 @@ const generate_lln = function(bs01, data, pseq, tseq, timeX, priceY) {
   for (let jj = 0; jj < pseq.length-1;jj++) {
     const otime = tseq[jj]; const ntime = tseq[jj+1];
     const oprice = pseq[jj]; const nprice = pseq[jj+1]; 
+    const p0 = Math.floor(wpfac * (wpmax - ( Number.isNaN(oprice) ? ((bs01==0) ? wpmin : wpmax) : oprice)));
+    const p1 = Math.floor(wpfac * (wpmax - ( Number.isNaN(nprice) ? ((bs01==0) ? wpmin : wpmax) : nprice)));
     if (otime >= time1n) {
       break;
-    } else if (otime == time0n) {
-      lln = ('M ' + iwt_imm(otime) + ' ' + 
-                Math.floor(wpfac * (wpmax - oprice)) );   ptime0 = otime;
-    } else if (otime < time0n) {
-      if (ntime >= time0n) {
-        lln = ('M ' + Math.floor(wtfac * (imm(otime)- wtmin)) + ' ' + 
-                  Math.floor(wpfac * (wpmax - oprice)) );  ptime0 = otime;
+    } else if (ntime < time0n) {
+    } else if (ntime == time0n) {
+      lln = ('M ' + iwt_imm(ntime) + ' ' + p1);   ptime0 = otime;
+    } else { 
+      if ((ntime > time0n) && (otime <= time0n)) { 
+         lln = ('M ' + iwt_imm(otime) + ' ' + p0 );
+         ptime0 = otime; 
       }
-    } else {
       if (Number.isNaN(oprice) && Number.isNaN(nprice)) {
         const t0 = iwt_imm(ptime0);
         const t1 = iwt_imm(ntime);
-        const p0 = Math.floor(wpfac * (wpmax - ((bs01==0) ? wpmin : wpmax)));
-        const p1 = Math.floor(wpfac * (wpmax - ((bs01==0) ? wpmin : wpmax)));
         lln = (lln + ' M ' + t0 + ' ' + p0 + ' M ' + t1 + ' ' + p1); ptime0 = ntime;
       } else if (oprice == nprice) {
       } else if (Number.isNaN(nprice)) {
         const t0 = iwt_imm(ptime0);
         const t1 = iwt_imm(ntime);
-        const p0 = Math.floor(wpfac * (wpmax - oprice));
-        const p1 = Math.floor(wpfac * (wpmax - ((bs01==0) ? wpmin : wpmax)));
         lln = (lln + ' M ' + t0 + ' ' + p0 + ' L ' + t1 + ' ' + p0 + ' L ' + t1 + ' ' + p1);
         ptime0 = ntime;
       } else if (Number.isNaN(oprice)) {
         const t0 = iwt_imm(ptime0);
         const t1 = iwt_imm(ntime);
-        const p0 = Math.floor(wpfac * (wpmax - ((bs01==0) ? wpmin : wpmax)));
-        const p1 = Math.floor(wpfac * (wpmax - nprice));
-        lln = (lln + ' M ' + t1 + ' ' + p0 + ' L ' + t1 + ' ' + p1); ptime0 = ntime;
+        lln = (lln + ' M ' + t0 + ' ' + p0 + ' M ' + t1 + ' ' + p0 + ' L ' + t1 + ' ' + p1); ptime0 = ntime;
       } else {
         //oH = Math.floor(wtfac * (Number(ntime-ptime0) / mult_const)); sumOH += oH;
         //lln = (lln + ' H ' + oH + ' V ' + 
         //     Math.floor(Number(nprice - oprice)*wpfac)) + ''; ptime0 = ntime;
         const t0 = iwt_imm(ptime0);
         const t1 = iwt_imm(ntime);
-        const p0 = Math.floor(wpfac * (wpmax - oprice));
-        const p1 = Math.floor(wpfac * (wpmax - nprice));
         lln = (lln + ' L ' + t1 + ' ' + p0 + ' L ' + t1 + ' ' + p1);  ptime0 = ntime;
       }
     } 
@@ -284,8 +278,8 @@ const BadPrep = (`
 `)
 const place_svg_ps = function(svg_svg, data, timeX, priceY, price_delta, wpfac, wpmax) {
   if ((data.ps === null) || (data.ps === undefined)) { past_ps = null; return(-1); }
-  const PRINT_N = printer.make_print_n(data.verbose_ob, "place_svg_ps");
-  DEBUG && PRINT_N(2, "place_svg_ps: Start.");
+  const PRINT_N = (!(DEBUG) ? dPRINT_N : printer.make_print_n(data.verbose_ob, "place_svg_ps"));
+  DEBUG && PRINT_N(4, "place_svg_ps: Start.");
   //PRINT_N(-1, " we have placed."); debugger;
   const mult_const = bigmult(data.unit);
   const imult_const = 1.0/mult_const;
@@ -326,9 +320,9 @@ const place_svg_ps = function(svg_svg, data, timeX, priceY, price_delta, wpfac, 
     //if (Math.abs(Math.abs(on_wp-priceY) - new_ps.dist) > 1.0) {
     //  console.log("Error, Dist has been misapplied?"); debugger;
     //} 
-    DEBUG && PRINT_N(-1, ": We have new_ps.dist = " + new_ps.dist + " but price_delta is " + price_delta);
+    DEBUG && PRINT_N(4, ": We have new_ps.dist = " + new_ps.dist + " but price_delta is " + price_delta);
     if (Math.abs(new_ps.dist) < (price_delta*10)) {  
-      DEBUG && PRINT_N(2, ": We touch a line, new_ps.dist=" + new_ps.dist + " price_delta*10=" + price_delta*10);
+      DEBUG && PRINT_N(4, ": We touch a line, new_ps.dist=" + new_ps.dist + " price_delta*10=" + price_delta*10);
       const fd_text = (", <br>[fd=" + data.ps.v_fd[onk] + ":\$" + on_wp.toFixed(2) + "]");
       prop_mo.try_lln = 1;
       prop_mo.nText = prop_mo.nText + fd_text;
@@ -417,6 +411,8 @@ const binary_nbbo_i = function(timeX, nbbo) {
 const update_bottom = function(obs_tgt, srts, tgt_target, old_i) {
   if (obs_tgt.length <= 0) { return(-1); }
   if (obs_tgt.length <=1) { if (obs_tgt[0] >= tgt_target) { return(0); } else {return(-1); } }
+  if (obs_tgt[srts[0]] >= tgt_target) { return(0); }
+  if (obs_tgt[srts[obs_tgt.length-1]] < tgt_target) { return(-1); }
   if ((old_i === undefined) || (old_i < 0) || (old_i >= srts.length)) {
    return(binary_bottom(obs_tgt, srts, tgt_target));
   }
@@ -450,6 +446,8 @@ const binary_bottom = function(obs_tgt, srts, tgt_target) {
 const update_top = function(obs_tgt, srts, tgt_target, old_i) {
   if (obs_tgt.length <= 0) { return(-1); }
   if (obs_tgt.length <=1) { if (obs_tgt[0] <= tgt_target) { return(1); } else {return(-1); } }
+  if (obs_tgt[srts[obs_tgt.length-1]] <= tgt_target) { return(obs_tgt.length); }
+  if (obs_tgt[srts[0]] > tgt_target) { return(-1); }
   if ((old_i === undefined) || (old_i < 0) || (old_i === null) || (old_i >= srts.length)) {
    return(binary_top(obs_tgt, srts, tgt_target));
   }
@@ -599,6 +597,7 @@ const place_svg_buys = function(svg_svg, data, srt_buys, orig_timeX, priceY, pri
 /*
 locX = event.offsetX; locY = event.offsetY;
 svg_svg = my_this.svg_zone; data = my_this.data; srt_sells = my_this.data.sells.srt_sells;
+update_hline = my_this.svg_ob.update_hline; pretty_num = my_this.pretty_num;
 get_obs_range = my_this.svg_ob.get_obs_range;
 calc_scale_wtfac = my_this.svg_ob.calc_scale_wtfac
 wtfac = calc_scale_wtfac(data); const wtmin = data.tmin * data.origmult;
@@ -608,7 +607,9 @@ priceY = data.pmin + (data.pmax-data.pmin) * (data.height - locY*1.0)/(data.heig
 wpfac = (data.height) / (data.pmax-data.pmin); wpmax = data.pmax;
 price_delta = my_this.svg_ob.prop_mo.last_lln.price_delta;
 sell_price_bounds = ((data.sells===undefined) || (data.sells == null)) ? [] : [0, data.sells.open.length]; 
+prop_mo = my_this.svg_ob.prop_mo;
 sell_range = get_obs_range(data.sells, srt_sells, orig_timeX, priceY, price_delta, sell_price_bounds, "is_sell");
+MyEventFunction = getEventListeners(my_this.svg_zone).mouseover[0].listener
 */
 const place_svg_sells = function(svg_svg, data, srt_sells, orig_timeX, priceY, price_delta, sell_price_bounds, wpfac, wpmax) {
   const wtfac = calc_scale_wtfac(data);
@@ -855,6 +856,7 @@ const rgb_gray = "rgb(50, 50, 50)";
 const add_svg_mouse_over = function(svg_div,svg_svg, text_svg, data, text_width, text_height, price_delta, wDiv, margins, my_this) {
    // Note, hard part of mouse over is detecting and converting screen locations
    //console.log("add_svg_mouse_over -- Conducting");
+   const PRINT_N = (DEBUG) ? my_this.printer.make_print_n(my_this.verbose_ob, "add_svg_mouse_over(): ") : dPRINT_N;
    past_nbbo_i = -1;
    const our_pd = price_delta;
    let open_i = [];
@@ -902,6 +904,10 @@ const add_svg_mouse_over = function(svg_div,svg_svg, text_svg, data, text_width,
    const MyEventFunction = (event) =>  {
       //data.mouse_ob = {'event':null};
       //this.PRINT_N(1, "obwidget -- el was clicked");  return(-1);
+     const PRINT_N = ((!DEBUG) ? function(n,x) { return(0); } : 
+                      my_this.printer.make_print_n( ((event.verbose !== null) && (event.verbose !== undefined) ? {'s':[], 'verbose':event.verbose} :
+                                                    my_this.verbose_ob), "MouseOverEventFunc(): "));
+     DEBUG && PRINT_N(5, "My Over Event Function, called");
      if ((event.target !== my_this.svg_zone) && (!(my_this.svg_zone.contains(event.target)))) {
        return(0);
      }
@@ -913,12 +919,16 @@ const add_svg_mouse_over = function(svg_div,svg_svg, text_svg, data, text_width,
      const orig_timeX = timeX * data.origmult; 
      const priceY = data.pmin + (data.pmax-data.pmin) * (data.height - locY*1.0)/(data.height);
      const wpfac = (data.height) / (data.pmax-data.pmin); const wpmax = data.pmax;
+
      prop_mo.nText= ("Loc[x=" + locX + ",y=" + locY + "] = (om=" + data.origmult + ") (" + timeX.toFixed(2) + "=" +
           pretty_num.string_del_tm(timeX, data.unit, data.st_time, true)  +
           ",$" + priceY.toFixed(2) + ")");
      prop_mo.tipText = ''; prop_mo.n_wp = 0; prop_mo.n_nbbo=0; prop_mo.n_buys=0; prop_mo.n_sells=0;
-     prop_mo.timeX = timeX; prop_mo.locX=locX; prop_mo.priceY=priceY;  prop_mo.locY=locY;
-     prop_mo.wpfac = wpfac; prop_mo.wtfac = wtfac;  prop_mo.wtmin= wtmin; prop_mo.wpmax = wpmax;
+     if (DEBUG) {
+       prop_mo.timeX = timeX; prop_mo.locX=locX; prop_mo.priceY=priceY;  prop_mo.locY=locY; prop_mo.price_delta = price_delta;
+       prop_mo.wpfac = wpfac; prop_mo.wtfac = wtfac;  prop_mo.wtmin= wtmin; prop_mo.wpmax = wpmax;
+     }
+     DEBUG && PRINT_N(5, "prop_mo is discovered.");
      if ((event.target === svg_div) || (svg_div.contains(event.target))) {
        let cross_path = svg_div.cross_path; 
        const pttl_0 = prop_mo.tipText.length;
@@ -959,6 +969,7 @@ const add_svg_mouse_over = function(svg_div,svg_svg, text_svg, data, text_width,
           console.log("Error, pttl_2=" + pttl_2 + ", pttl_1=" + pttl_1); debugger;
         }
         if ( (!(!(data.buys))) && (!(!(data.buys.open))) && (data.buys.open.length > 0)) {
+          DEBUG && PRINT_N(5, " Calling place_svg_buys.");
           my_this.svg_ob.ptc.buys = place_svg_buys(svg_svg, data, srt_buys, orig_timeX, priceY, price_delta, buy_price_bounds, wpfac, wpmax);
         }
         let pttl_3 = prop_mo.tipText.length;
@@ -1155,5 +1166,6 @@ exports = {"add_svg_mouse_over":add_svg_mouse_over, "make_text_el":make_text_el,
    "binary_bottom":binary_bottom, "current_nbbo_i":current_nbbo_i, "binary_nbbo_i": binary_nbbo_i, 'prop_mo':prop_mo, 'place_svg_ps':place_svg_ps, 
    'generate_lln':generate_lln, 'make_hline':make_hline, 'make_svg_el':make_svg_el, 'write_ttip':write_ttip, 'calc_unscale_wtfac':calc_unscale_wtfac,
    'place_svg_buys':place_svg_buys, 'place_svg_sells':place_svg_sells, 'place_svg_trades':place_svg_trades,
-   'calc_unscale_wtmin':calc_unscale_wtmin, 'seek_new_ps':seek_new_ps, 'get_obs_range':get_obs_range, 'calc_scale_wtfac':calc_scale_wtfac, 'calc_scale_wtmin':calc_scale_wtmin}
+   'calc_unscale_wtmin':calc_unscale_wtmin, 'seek_new_ps':seek_new_ps, 'get_obs_range':get_obs_range, 'calc_scale_wtfac':calc_scale_wtfac, 'calc_scale_wtmin':calc_scale_wtmin, 
+   'update_hline':update_hline}
 module.exports = exports;

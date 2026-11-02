@@ -52,7 +52,7 @@ var canvas_pixels = 2; var height_canvas = default_height; var width_canvas = de
 var canvas_tweak = 0; // Incase extra tweak to put CANVAS on SVG necessary
 const is_numeric = printer.is_numeric; const is_positive_numeric = (x) => (printer.is_numeric(x) && (x > 0));
 const xwid = 5; const hline_effect = .15; const ywid = 5; const vline_effect = .15;
-const slider_pixels = 20; const price_delta = 1.5;
+const slider_pixels = 20; const default_price_delta = 1.5;
 const priceFontWid = 18;
 
 const buttons_left_loc = ['1000','1300'];
@@ -152,6 +152,7 @@ class obwidget {
   unique_prices = []; oad={}; algo_data = {}; ps = null;  bigmult = pretty_num.bigmult;  ord_algo=ord_algo;
   do_plots = {'do_nbbo':true,'do_trades':true,'do_quotes':true,'do_wp':true}; bars = bars;
   bardr = null; pause_render = false; debug_setting = DEBUG;
+  price_delta = default_price_delta;
   constructor({model, el}) {
     this.randomStr = (Math.random().toString(36).substring(2, 5) +
           Math.random().toString(36).substring(2, 5));
@@ -171,6 +172,7 @@ class obwidget {
       this.height = ((!(!(in_data.height))) && (is_numeric(in_data.height))) ? in_data.height : 600;
       this.weight = ((!(!(in_data.width))) && (is_numeric(in_data.width))) ? in_data.width : 400; 
     }
+    this.price_delta = is_numeric(model.get('price_delta')) ? model.get('price_delta') : default_price_delta;
     DEBUG && this.PRINT_N(1, " Setting algo data if it exists.");
     const my_this = this;
     try {
@@ -283,6 +285,7 @@ class obwidget {
     if (!(this.data.height)) {
       PRINT_N(-6, "Weird, after you did this we don't have data.height?"); debugger;
     }
+    if (is_positive_numeric(this.data.price_delta)) { this.price_delta = this.data.price_delta; } else { this.data.price_delta = default_price_delta; }
     if (is_numeric(this.data.tmin)) { } else { this.data.tmin = 1.0*demo_data.tmin }
     if (is_numeric(this.data.tmax)) { } else { this.data.tmax = 1.0*demo_data.tmax }
     if (this.data.tmax < this.data.tmin) { let dmm = this.data.tmin*1.0; this.data.tmin=(1.0*this.data.tmax); this.data.tmax = dmm }
@@ -314,6 +317,9 @@ class obwidget {
     DEBUG && PRINT_N(1," --  this.data.height is " + this.data.height + ", going to algo_data");
     // Follow through with setting up data for algo.
     DEBUG && PRINT_N(1," -- We have determined Basic Data settings.");
+    if (DEBUG) {
+      this.data.first_render = true;
+    }
   }
   configure_form_pt() {
     const my_this = this;
@@ -1045,7 +1051,7 @@ class obwidget {
       }
       this_widget.gpu_pipeline = this.draw_ob.OB_generate_gpu_pipeline(this_widget.gpu_pipeline, this_widget.canvas_gpu,
         this_widget.adapter, this_widget.device, this_widget);
-      DEBUG && PRINT_N(1, "call_plot()[frameFunction()]-- ob_pu_render to be called.");
+      DEBUG && PRINT_N(3, "call_plot()[frameFunction()]-- ob_pu_render to be called.");
       this.draw_ob.ob_gpu_render(this_widget.gpu_pipeline, this.do_plots);
     }
     let frameCallback = frameFunction(here_this, draw_ob);
@@ -1601,7 +1607,7 @@ class obwidget {
    ttip_div.appendChild(ttip_svg);
    my_this.widgetDiv.appendChild(ttip_div);  
    svg_ob.add_svg_mouse_over(my_this.canvasDiv, my_this.svg_zone, my_this.mouse_text_div.mouse_text_svg, my_this.data, 
-      mouse_text_width, mouse_text_height, price_delta, my_this.widgetDiv, this.margins, this)
+      mouse_text_width, mouse_text_height, my_this.price_delta, my_this.widgetDiv, this.margins, this)
    //debugger;
   }
   addClickListener() {

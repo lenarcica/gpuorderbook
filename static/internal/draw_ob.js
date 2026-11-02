@@ -13,6 +13,7 @@ const is_numeric = printer.is_numeric;
 const default_verbose_ob = {'s':[], verbose:0};
 var verbose_ob = default_verbose_ob;
 var PRINT_N = printer.make_print_n(default_verbose_ob,"draw_ob:");
+var dPRINT_N = printer.make_print_n(default_verbose_ob,"draw_ob:");
 
 var buffers = {uniform_buffer:null,nbbo:null,buys:null,sells:null,trades:null};
 var device_buffers = null;
@@ -70,11 +71,11 @@ function generate_gpu_renderPassDescriptor() {
 //   Pipelines combine the "module" (the WebGPU code) with characteristics
 //   of the GPU structure.  For 2D this is simpler than requirements for 3D
 function generate_individual_pipeline( device, module, verbose_ob, what_pipeline) {
-  const vstr = "draw_ob.js->generate_gpu_renderPipeline(" + what_pipeline + "): ";
-  const PRINT_N = printer.make_print_n(verbose_ob, vstr);
-  DEBUG && PRINT_N(1,"-- initiated");
+  const vstr = "draw_ob.js->generate_gpu_renderPipeline(" + what_pipeline + ",vb=" +verbose_ob.verbose+"): ";
+  const PRINT_N = (DEBUG)  ? printer.make_print_n(verbose_ob, vstr) : dPRINT_N;
+  DEBUG && PRINT_N(3,"-- initiated");
   presentationFormat = navigator.gpu.getPreferredCanvasFormat();
-  PRINT_N(1," -- Creating the pipeline");
+  PRINT_N(2," -- Creating the pipeline");
   //const positionBufferLayoutDesc = createDepthTextureDesc(device, a_gpuwidget, what_pipeline, verbose_ob) 
   //console.log(InitT + "-- DepthTextureDesc was created supplying back in pipeline about to call createRenderPipeline -- ");
   const individual_pipeline = device.createRenderPipeline({
@@ -89,14 +90,14 @@ function generate_individual_pipeline( device, module, verbose_ob, what_pipeline
   if ((individual_pipeline === null) || (individual_pipeline===undefined)) {
     PRINT_N(-6, "-- generate_individual_pipeline(" + what_pipeline + "): Fail. Debug?"); debugger;
   }
-  PRINT_N(1,"-- pipeline was generated with createRenderPipeline -- all concluded.");
+  PRINT_N(3,"-- pipeline was generated with createRenderPipeline -- all concluded.");
   return(individual_pipeline);
 }
 
 // createDepthTextureDesc()
 function createDepthTextureDesc(device, a_obwidget, what_depth_texture, verbose_ob) {
-  const vstr = "draw_ob.js->createDepthTextureDesc(" + what_depth_texture + "): ";
-  const PRINT_N = printer.make_print_n(verbose_ob, vstr);
+  const vstr = "draw_ob.js->createDepthTextureDesc(" + what_depth_texture + ",vb=" + verbose_ob.verbose+"): ";
+  const PRINT_N = ((DEBUG) ? printer.make_print_n(verbose_ob, vstr) : dPRINT_N);
   DEBUG && PRINT_N(1, "-- we have called just initiated " + what_depth_texture);
   const colorTexture = a_obwidget.canvas_gpu.getCurrentTexture();
   const colorTextureView = colorTexture.createView();
@@ -132,17 +133,20 @@ function createDepthTextureDesc(device, a_obwidget, what_depth_texture, verbose_
 }
 function generate_gpu_module(device, module_data, verbose_ob) {
   const PRINT_N = printer.make_print_n(verbose_ob,
-   "draw_ob.js->generate_gpu_module(" + module_data.label + "): ");
+   "draw_ob.js->generate_gpu_module(" + module_data.label + ", vb=" + verbose_ob.verbose +"): ");
   DEBUG && PRINT_N(1, "  intiating generation of the module");
   const module = device.createShaderModule({
     label: module_data.label, code: module_data.code });
-  DEBUG && PRINT_N(1, "  conclused generation of the module");
+  DEBUG && PRINT_N(1, "  concluded generation of the module");
   return(module);
 }
 function OB_generate_gpu_pipeline(gpu_pipeline, gpu_context, adapter, device, a_obwidget) {
-  const vstr = "draw_ob.js->OB_generate_gpu_pipeline(): ";
-  const verbose_ob = a_obwidget.verbose_ob;
-  const PRINT_N = printer.make_print_n(verbose_ob, vstr);
+  const verbose_ob = {'s': a_obwidget.verbose_ob.s, 
+                      'verbose': 
+                         (a_obwidget.data.first_render ? a_obwidget.verbose_ob.verbose+3 : a_obwidget.verbose_ob.verbose-1)};
+
+  const vstr = ((DEBUG) ? "draw_ob.js->OB_generate_gpu_pipeline(vb=" + verbose_ob.verbose + "): " : null);
+  const PRINT_N = ((DEBUG) ? printer.make_print_n(verbose_ob, vstr) : dPRINT_N);
   let update_uniform_int = 0;
   generate_gpu_renderPassDescriptor();
   if (!(device)) {
@@ -168,7 +172,7 @@ function OB_generate_gpu_pipeline(gpu_pipeline, gpu_context, adapter, device, a_
     PRINT_N(-6, "ERROR: tmin is not evaluated for a_obwidget."); debugger; return(-1);
   }
   if ( (!(gpu_pipeline))  || (!(gpu_pipeline.data_pipeline) )) {
-    DEBUG && PRINT_N(2," OB_generate_gpu_pipleine initiate module generation");
+    DEBUG && PRINT_N(1," Pipelines Missing: OB_generate_gpu_pipleine initiate module generation");
     const module_nbbo = generate_gpu_module(device, data_nbbo_module, verbose_ob);
     const module_nbb = generate_gpu_module(device, data_nbb_module, verbose_ob);
     const module_nbo = generate_gpu_module(device, data_nbo_module, verbose_ob);
@@ -177,11 +181,11 @@ function OB_generate_gpu_pipeline(gpu_pipeline, gpu_context, adapter, device, a_
     const module_buys = generate_gpu_module(device, data_buys_module,verbose_ob);
     const module_sells = generate_gpu_module(device, data_sells_module,verbose_ob);
     const module_trades = generate_gpu_module(device, data_trades_module, verbose_ob);
-    DEBUG && PRINT_N(1, " OB_generate_gpu_pipeline: we made a module_nbbo");
-    DEBUG && PRINT_N(1, " Going towards gnenerate piepline.");
+    DEBUG && PRINT_N(2, " OB_generate_gpu_pipeline: we made a module_nbbo");
+    DEBUG && PRINT_N(2, " Going towards gnenerate piepline.");
     //const module_buys = generate_gpu_module(device, draw_buys_module, verbose);
     //const module_sells= generate_gpu_module(device, draw_sells_module, verbose);
-    DEBUG && PRINT_N(1, "-- now generating pipeline");
+    DEBUG && PRINT_N(2, "-- now generating pipeline");
     gpu_pipeline = {
        device:device, adapter:adapter,
        module_nbbo: module_nbbo, 
@@ -201,23 +205,24 @@ function OB_generate_gpu_pipeline(gpu_pipeline, gpu_context, adapter, device, a_
     } 
     //console.log(" draw_ob.js here we are.");
     //debugger;
-    DEBUG && PRINT_N(1, "update uniform window device buffer");
+    DEBUG && PRINT_N(2, "update uniform window device buffer");
     if (!(a_obwidget.data)) {
       PRINT_N(-1, "ERROR OB_generate_gpu_pipeline, data is not populated"); debugger;
     } else if (!is_numeric(a_obwidget.going.tmin)) {
       PRINT_N(-1, "ERROR OB_generate_gpu_pipeline, data does not contain tmin?"); debugger;
     }
     update_uniform_int = update_uniform_window_device_buffer(device, a_obwidget.data, 0, gpu_pipeline)
-    DEBUG && PRINT_N(1, "updating the vertex buffers");
+    DEBUG && PRINT_N(2, "updating the vertex buffers");
     populate_device_verts_buffers(device, gpu_pipeline);
-    DEBUG && PRINT_N(1, "update the device data buffers: running populate_device_data_buffers.");
-    populate_device_data_buffers(device, gpu_pipeline);
-    PRINT_N(1, "populate_device_data_buffers concluded.");
+    DEBUG && PRINT_N(2, "update the device data buffers: running populate_device_data_buffers.");
+    populate_device_data_buffers(device, gpu_pipeline, verbose_ob);
+    PRINT_N(1, ":: gpu_pipeline genreation concluded.");
   } else {
-    DEBUG && PRINT_N(1, " -- don't need to re-initiate, material is here.");
+    DEBUG && PRINT_N(2, " -- don't need to re-initiate, material is here.");
     update_uniform_int = update_uniform_window_device_buffer(device, a_obwidget.data, 0, gpu_pipeline)
   }
-  DEBUG && PRINT_N(1, " OB_generate_gpu_pipeline:  returning gpu_pipeline.");
+  DEBUG && PRINT_N(2, " OB_generate_gpu_pipeline:  returning gpu_pipeline. [first_render=" + a_obwidget.data.first_render + "]");
+  a_obwidget.data.first_render = false;
   return(gpu_pipeline); 
 }
 
@@ -657,7 +662,7 @@ function update_dynamic_uniform_window_device_buffer(device, gpu_pipeline) {
   return(1);
 }
 function update_uniform_window_device_buffer(device, data, bs01, gpu_pipeline) {
-  DEBUG && PRINT_N(3, "update_uniform_window_device_buffer called");
+  DEBUG && PRINT_N( (data.first_render ? 1 : 3), "update_uniform_window_device_buffer called");
   if (!(data)) {
     PRINT_N(-1, "ERROR - update_uniform_window_device_buffer() error no data.");
     return(-1);
@@ -933,9 +938,10 @@ function revalue_ivs(data, filt_f) {
      }
    }
 }
-function populate_device_data_wp_buffers(device, gpu_pipeline) {
+function populate_device_data_wp_buffers(device, gpu_pipeline, verbose_ob) {
    //console.log("populate_device_data_wp_buffers");
    //debugger;
+   const PRINT_N = ((DEBUG) ? ((verbose_ob.verbose >= 0) ? printer.make_print_n(verbose_ob, "populate_device_data_wp_buffers(): ") : dPRINT_N): dPRINT_N);
    if ((buffers.wp === null) || (buffers.wp === undefined)) { console.log("populate_data_wp_buffers: Failed!"); return; }
    const lt = buffers.wp.time.length;  
    const lk = buffers.wp.bv.length;
@@ -963,12 +969,14 @@ function populate_device_data_wp_buffers(device, gpu_pipeline) {
      //console.log("How did population work?");
      //debugger;
 }
-function populate_device_data_buffers(device, gpu_pipeline) {
+function populate_device_data_buffers(device, gpu_pipeline, verbose_ob) {
+   const PRINT_N = ((DEBUG) ? ((verbose_ob.verbose >= 1) ? printer.make_print_n(verbose_ob, "populate_device_data_buffers") : dPRINT_N) : dPRINT_N);
+   DEBUG && PRINT_N(2, "populate_device_data_buffers: Starting.");
+
    if (!(buffers.nbbo.time)) {
-     console.log("populate_device_data_buffers:: might not work if buffers.nbbo.time is not populated.");
+     PRINT_N(-6, "populate_device_data_buffers:: might not work if buffers.nbbo.time is not populated.");
      debugger;
    }
-   DEBUG && console.log("populate_device_data_buffers: Starting.");
    if ((buffers.nbbo !== null) && (buffers.nbbo !== undefined)) { 
    //const nd_values = new Float32Array(3*graph_nodes.length)
      gpu_pipeline.device_nbbo_buffers = {
@@ -991,7 +999,7 @@ function populate_device_data_buffers(device, gpu_pipeline) {
    }
    if ((buffers.wp !== null) && (buffers.wp !== undefined)) {
      //console.log("Not populating wp buffer.");
-     populate_device_data_wp_buffers(device, gpu_pipeline);
+     populate_device_data_wp_buffers(device, gpu_pipeline, verbose_ob);
    }
    if ((buffers.buys !== null) && (buffers.buys != undefined)) {
    gpu_pipeline.device_buys_buffers = {
@@ -1047,7 +1055,7 @@ function populate_device_data_buffers(device, gpu_pipeline) {
    device.queue.writeBuffer(gpu_pipeline.device_trades_buffers.qty, 0, buffers.trades.qty);
    device.queue.writeBuffer(gpu_pipeline.device_trades_buffers.price, 0, buffers.trades.price);
    }
-   DEBUG && console.log("populate_device_data_buffers() concluded.");
+   DEBUG && PRINT_N(2, "populate_device_data_buffers() concluded.");
 }
 function create_nbbo_bindgroup(device,gpu_pipeline, nbb_or_nbo) {
   
@@ -1192,11 +1200,11 @@ function ob_gpu_render(gpu_pipeline, do_plots) {
 
   if (!(gpu_pipeline.device_nbbo_buffers)) {
     PRINT_N(-6, "ob_gpu_render:: intitiating device_nbbo_buffers?");
-    populate_device_data_buffers(gpu_pipeline.device, gpu_pipeline);
+    populate_device_data_buffers(gpu_pipeline.device, gpu_pipeline, verbose_ob);
   }
   if (!(gpu_pipeline.device_buys_buffers)) {
     PRINT_N(-6, "ob_gpu_render:: intitiating device_nbbo_buffers?");
-    populate_device_data_buffers(gpu_pipeline.device, gpu_pipeline);
+    populate_device_data_buffers(gpu_pipeline.device, gpu_pipeline, verbose_ob);
     PRINT_N(1, "ob_gpu_render() emergency call for buy buffers.");
   }
   if (!(gpu_pipeline.device_nbbo_buffers)) {
@@ -1241,7 +1249,7 @@ function ob_gpu_render(gpu_pipeline, do_plots) {
   //}
   //const bv_bindgroup = ((false) && (buffers.wp !== null)) ? create_wp_bindgroup(gpu_pipeline.device, gpu_pipeline, "bv") : null;
   //const sv_bindgroup = ((false) && (buffers.wp !== null)) ? create_wp_bindgroup(gpu_pipeline.device, gpu_pipeline, "sv") : null; 
-  DEBUG && PRINT_N(2, " creating buys_bindgroup.");
+  DEBUG && PRINT_N(3, " creating buys_bindgroup.");
   const buys_bindgroup = (buffers.buys !== null) ? create_buys_bindgroup(gpu_pipeline.device, gpu_pipeline) : null;
   const sells_bindgroup = (buffers.sells !== null) ? create_sells_bindgroup(gpu_pipeline.device, gpu_pipeline) : null;
   const trades_bindgroup = (buffers.trades !== null) ? create_trades_bindgroup(gpu_pipeline.device, gpu_pipeline) : null;
