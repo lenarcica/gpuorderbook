@@ -180,9 +180,9 @@ const generate_wpt_lln = function(new_ps, data, timeX, priceY) {
     console.log("  --- note onk = " + onk + "/" + nk);
     console.log("Please inspect");
   }
-  return(generate_lln(data, pseq, tseq, timeX));
+  return(generate_lln(new_ps.bs01, data, pseq, tseq, timeX));
 }
-const generate_lln = function(data, pseq, tseq, timeX, priceY) {
+const generate_lln = function(bs01, data, pseq, tseq, timeX, priceY) {
   const mult_const = bigmult(data.unit);
   const imult_const = 1.0/mult_const;
   const st_time_bi = BigInt(pretty_num.process_tm(data.st_time, -9));
@@ -211,7 +211,26 @@ const generate_lln = function(data, pseq, tseq, timeX, priceY) {
                   Math.floor(wpfac * (wpmax - oprice)) );  ptime0 = otime;
       }
     } else {
-      if (oprice == nprice) {
+      if (Number.isNaN(oprice) && Number.isNaN(nprice)) {
+        const t0 = iwt_imm(ptime0);
+        const t1 = iwt_imm(ntime);
+        const p0 = Math.floor(wpfac * (wpmax - ((bs01==0) ? wpmin : wpmax)));
+        const p1 = Math.floor(wpfac * (wpmax - ((bs01==0) ? wpmin : wpmax)));
+        lln = (lln + ' M ' + t0 + ' ' + p0 + ' M ' + t1 + ' ' + p1); ptime0 = ntime;
+      } else if (oprice == nprice) {
+      } else if (Number.isNaN(nprice)) {
+        const t0 = iwt_imm(ptime0);
+        const t1 = iwt_imm(ntime);
+        const p0 = Math.floor(wpfac * (wpmax - oprice));
+        const p1 = Math.floor(wpfac * (wpmax - ((bs01==0) ? wpmin : wpmax)));
+        lln = (lln + ' M ' + t0 + ' ' + p0 + ' L ' + t1 + ' ' + p0 + ' L ' + t1 + ' ' + p1);
+        ptime0 = ntime;
+      } else if (Number.isNaN(oprice)) {
+        const t0 = iwt_imm(ptime0);
+        const t1 = iwt_imm(ntime);
+        const p0 = Math.floor(wpfac * (wpmax - ((bs01==0) ? wpmin : wpmax)));
+        const p1 = Math.floor(wpfac * (wpmax - nprice));
+        lln = (lln + ' M ' + t1 + ' ' + p0 + ' L ' + t1 + ' ' + p1); ptime0 = ntime;
       } else {
         //oH = Math.floor(wtfac * (Number(ntime-ptime0) / mult_const)); sumOH += oH;
         //lln = (lln + ' H ' + oH + ' V ' + 
@@ -220,7 +239,7 @@ const generate_lln = function(data, pseq, tseq, timeX, priceY) {
         const t1 = iwt_imm(ntime);
         const p0 = Math.floor(wpfac * (wpmax - oprice));
         const p1 = Math.floor(wpfac * (wpmax - nprice));
-        lln = (lln + ' L ' + t1 + ' ' + p0 + ' L ' + t1 + ' ' + p1);
+        lln = (lln + ' L ' + t1 + ' ' + p0 + ' L ' + t1 + ' ' + p1);  ptime0 = ntime;
       }
     } 
   }
@@ -244,7 +263,7 @@ timeXn = mm(timeX); time0n = mm(data.tmin); time1n = mm(data.tmax);
 ptime0 = 0n; sumOH = 0; oH = 0;  lln = "";
 
 //
-lln = generate_lln(new_ps, data, timeX, priceY, price_delta, wtfac, wtmin, wpfac, wpmax);
+lln = generate_lln(new_ps.bs01, data, timeX, priceY, price_delta, wtfac, wtmin, wpfac, wpmax);
 
 `);
 const BadPrep = (`
