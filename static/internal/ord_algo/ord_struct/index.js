@@ -7,7 +7,7 @@
 // Which defines how ../ord_algo.js will call important functions.
 //
 import { MarketExchangeBook, OneSideCombinedBook, OneSideBook, 
-         TotalCurrentState, OneSideState, OneLevelState, Kalgo, isin_Kalgo, str_kalgo, und_str_kalgo, make_print_n} from '../ord_struct.js';
+         TotalCurrentState, OneSideState, OneLevelState, Kalgo, isin_Kalgo, str_kalgo, und_str_kalgo, make_print_n, sat_p} from '../ord_struct.js';
 
 import { ManualCalc, calc_barrier_algo, 
          calc_barrier_num_filled,
@@ -133,12 +133,12 @@ const p_exports =  ((DEBUG) ? { "MarketExchangeBook":MarketExchangeBook, "OneSid
   "calc_mc_ir_barrier":calc_mc_ir_barrier, "calc_mc_m_exp_decay":calc_mc_m_exp_decay, 
   "calc_mc_ir_exp_decay":calc_mc_ir_exp_decay, "check_mc_m_algo":check_mc_m_algo, "calc_mc_m_algo":calc_mc_m_algo, 
   "calc_mc_ir_algo":calc_mc_ir_algo,
-  "Kalgo":Kalgo, "isin_Kalgo":isin_Kalgo, "str_kalgo":str_kalgo, "und_str_kalgo":und_str_kalgo,
+  "Kalgo":Kalgo, "isin_Kalgo":isin_Kalgo, "str_kalgo":str_kalgo, "und_str_kalgo":und_str_kalgo, 'sat_p':sat_p,
   "make_print_n":make_print_n
 } : { "MarketExchangeBook":MarketExchangeBook, "OneSideCombinedBook":OneSideCombinedBook, 
   "OneSideBook":OneSideBook, "TotalCurrentState":TotalCurrentState, "OneSideState":OneSideState, "OneLevelState":OneLevelState,
   "ManualCalc":ManualCalc,  
-  "Kalgo":Kalgo, "isin_Kalgo":isin_Kalgo, "str_kalgo":str_kalgo, "und_str_kalgo":und_str_kalgo,
+  "Kalgo":Kalgo, "isin_Kalgo":isin_Kalgo, "str_kalgo":str_kalgo, "und_str_kalgo":und_str_kalgo, 'sat_p':sat_p,
   "make_print_n":make_print_n
 } );
 
