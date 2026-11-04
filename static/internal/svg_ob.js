@@ -955,14 +955,24 @@ const add_svg_mouse_over = function(svg_div,svg_svg, text_svg, data, text_width,
         //
         my_this.svg_ob.ptc = {'nbbo':0, 'ps':0, 'buys':0,'sells':0,'trades':0};
         if  ( (!(!(data.nbbo))) && (!(!(data.nbbo.time))) && (data.nbbo.time.length > 0)) {
-          my_this.svg_ob.ptc.nbbo = place_svg_nbbo(svg_svg, data, orig_timeX);
+          if (  (my_this.do_plots === null) || (my_this.do_plots === undefined) || 
+                (my_this.do_plots['do_nbbo'] === undefined) || (my_this.do_plots['do_nbbo'] === true) || (my_this.do_plots['do_nbbo'] === null)) {
+            my_this.svg_ob.ptc.nbbo = place_svg_nbbo(svg_svg, data, orig_timeX);
+          } else {
+            // Actually lets keep nbbo balls
+            my_this.svg_ob.ptc.nbbo = place_svg_nbbo(svg_svg, data, orig_timeX);
+          }
         }
         let pttl_1 = prop_mo.tipText.length;
         if (pttl_1 < pttl_0) {
           console.log("Error, pttl_1=" + pttl_1 + ", pttl_0=" + pttl_0); debugger;
         }
         if ( (!(!(data.ps.v_b_wp))) && (data.ps.v_b_wp.k.length > 0)) {
-          my_this.svg_ob.ptc.ps = place_svg_ps(svg_svg, data, timeX, priceY, price_delta, wpfac, wpmax);
+          if (  (my_this.do_plots === null) || (my_this.do_plots === undefined) || 
+                (my_this.do_plots['do_wp'] === undefined) || (my_this.do_plots['do_wp'] === true) || (my_this.do_plots['do_wp'] === null)) {
+            my_this.svg_ob.ptc.ps = place_svg_ps(svg_svg, data, timeX, priceY, price_delta, wpfac, wpmax);
+          } else {
+          }
         }
         let pttl_2 = prop_mo.tipText.length
         if (pttl_2 < pttl_1) {
@@ -970,21 +980,34 @@ const add_svg_mouse_over = function(svg_div,svg_svg, text_svg, data, text_width,
         }
         if ( (!(!(data.buys))) && (!(!(data.buys.open))) && (data.buys.open.length > 0)) {
           DEBUG && PRINT_N(5, " Calling place_svg_buys.");
-          my_this.svg_ob.ptc.buys = place_svg_buys(svg_svg, data, srt_buys, orig_timeX, priceY, price_delta, buy_price_bounds, wpfac, wpmax);
+          if (  (my_this.do_plots === null) || (my_this.do_plots === undefined) || 
+                (my_this.do_plots['do_quotes'] === undefined) || (my_this.do_plots['do_quotes'] === true) || (my_this.do_plots['do_quotes'] === null)) {
+            my_this.svg_ob.ptc.buys = place_svg_buys(svg_svg, data, srt_buys, orig_timeX, priceY, price_delta, buy_price_bounds, wpfac, wpmax);
+          } else {
+          }
         }
         let pttl_3 = prop_mo.tipText.length;
         if (pttl_3 < pttl_2) {
           console.log("Error, pttl_3=" + pttl_3 + ", pttl_2=" + pttl_2); debugger;
         }
         if ( (!(!(data.sells)))  && (!(!(data.sells.open))) && (data.sells.open.length > 0)) {
-          my_this.svg_ob.ptc.sells = place_svg_sells(svg_svg, data, srt_sells, orig_timeX, priceY, price_delta, sell_price_bounds, wpfac, wpmax);
+          if (  (my_this.do_plots === null) || (my_this.do_plots === undefined) || 
+                (my_this.do_plots['do_quotes'] === undefined) || (my_this.do_plots['do_quotes'] == true) || (my_this.do_plots['do_quotes'] === null)) {
+            my_this.svg_ob.ptc.sells = place_svg_sells(svg_svg, data, srt_sells, orig_timeX, priceY, price_delta, sell_price_bounds, wpfac, wpmax);
+          } else {
+          }
         }
+
         let pttl_4 = prop_mo.tipText.length;
         if (pttl_4 < pttl_3) {
           console.log("Error, pttl_4=" + pttl_4 + ", pttl_3=" + pttl_3); debugger;
         }
         if ( (!(!(data.trades))) && (!(!(data.trades.time))) && (data.trades.time.length > 0)) {
-          my_this.svg_ob.ptc.trades = place_svg_trades(svg_svg, data, srt_buys, orig_timeX, priceY, price_delta, trade_bounds, wpfac, wpmax, srt_trades);
+          if (  (my_this.do_plots === null) || (my_this.do_plots === undefined) || 
+                (my_this.do_plots['do_trades'] === undefined) || (my_this.do_plots['do_trades'] === true) || (my_this.do_plots['do_trades'] === null)) {
+            my_this.svg_ob.ptc.trades = place_svg_trades(svg_svg, data, srt_buys, orig_timeX, priceY, price_delta, trade_bounds, wpfac, wpmax, srt_trades);
+          } else {
+          }
           //if (trade_range.ret.length > 0) { debugger; }
         }
         let pttl_5 = prop_mo.tipText.length;

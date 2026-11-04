@@ -1829,6 +1829,7 @@ class obwidget {
        my_this.price_slider_div.noUiSlider.set([my_this.price_format.to(data.pmin), my_this.price_format.to(data.pmax)]); 
        my_this.time_slider_div.noUiSlider.set([my_this.time_format.to(data.tmin), my_this.time_format.to(data.tmax)]); 
        my_this.redraw_time_axis();  my_this.redraw_price_axis();  my_this.updateFormTime();
+       my_this.time_button.rect.style.visibility='hidden';
        my_this.call_plot();
        clearup();
     }
@@ -1845,7 +1846,10 @@ class obwidget {
       } else {
         console.log("mouse Down in OB");
         my_this.time_button.is_down = true; my_this.time_button.e0 = event;
-        my_this.time_button.rect = svg_ob.make_hline('tmp_time', event.offsetX, event.offsetY,event.offsetX, "rgb(80, 80, 80)",3); 
+        if ((my_this.time_button.rect === undefined) || (my_this.time_button.rect === null)) {
+          my_this.time_button.rect = svg_ob.make_hline('tmp_time', event.offsetX, event.offsetY,event.offsetX, "rgb(80, 80, 80)",3); 
+        }
+        my_this.time_button.rect.style.visibility = 'visible';
         my_this.time_button.rect.setAttribute('fill','none');
         my_this.time_button.rect.setAttribute('z-level',5);  my_this.svg_zone.appendChild(my_this.time_button.rect);
         my_this.time_button.rect.setAttribute( 'stroke-width', 5);
@@ -1866,6 +1870,7 @@ class obwidget {
         my_this.svg_zone.removeEventListener('mouseup', handle_mouse_up);
         my_this.svg_zone.removeEventListener('mousemove', handle_mouse_move);
         my_this.svg_zone.removeEventListener('mousedown', handle_mouse_down);
+        my_this.time_button.rect.setAttribute('d', 'M -100 100');  my_this.time_button.rect.style.visibility='hidden';
       } else {
         console.log("time Button Click On");
         my_this.time_button.run_mouse = true;  my_this.time_button.style.backgroundColor = on_color;
