@@ -481,6 +481,12 @@ const binary_top = function(obs_tgt, srts, tgt_target) {
 // obs = data.buys; srts = srt_buys; on_time = 10; on_price = 22; price_delta=3; pastBounds = [-1,srt_buys.length];
 const get_obs_range = function(obs, srts, on_time, on_price, price_delta, pastBounds, on_string) {
   if ((obs === null) || (obs === undefined)) { return({new_range:[-1,-1],ret:[]}); }
+  if (obs.price[srts[0]] < on_price - price_delta) {
+    return({'new_range': [obs.price.length, obs.price.length], ret:[]});
+  }
+  if (obs.price[srts[srts.length01]] > on_price + price_delta) {
+    return({'new_range':[-1,-1],ret:[]});
+  } 
   let new_range = [update_bottom(obs.price,srts, on_price-price_delta, pastBounds[0]),
                    update_top(obs.price,srts,on_price+price_delta,pastBounds[1])];
 
@@ -522,13 +528,10 @@ const get_obs_range = function(obs, srts, on_time, on_price, price_delta, pastBo
       }
     }
   }
-  if (((new_range[0] < 0) || (new_range[0] >= obs.price.length)) && ((new_range[1] < 0) || (new_range[1] >= obs.price.length)) ) {
-    return({new_range:new_range, ret:[]});
-  }
   let ret = [];
   let up_range = new_range[1]; if (up_range == new_range[0]) { up_range = new_range[0] + 1; }
   if (up_range > obs.open.length) { up_range = obs.open.length; }
-  for (let ii = new_range[0]; ii < up_range; ii++) {
+  for (let ii = (new_range[0] < 0 ? 0 : new_range[0]); ii < up_range; ii++) {
     if ((obs.open[srts[ii]] <= on_time) && (obs.close[srts[ii]] >= on_time)) { ret.push(srts[ii]); }
   }
   if (ret.length >= 100) {
@@ -567,7 +570,7 @@ const place_svg_buys = function(svg_svg, data, srt_buys, orig_timeX, priceY, pri
    //} else {
    //  console.log("data.keep_iv is not null.  Buy escape"); debugger;
    //}
-   const iv_filt = ((data.keep_iv === null) ? ((x)=>true) : ((x)=>(data.buys.ivs[x] == data.keep_iv)));
+   const iv_filt = (((data.keep_iv === null) || (data.keep_iv == 'all')) ? ((x)=>true) : ((x)=>(data.buys.ivs[x] == data.keep_iv)));
    buy_select = [...buy_range.ret].filter(iv_filt);
    if (buy_select.length >= 100) {
      console.log("CONCERNING -- Buy select, something is concerning, we have buy_select of length " + buy_select.length);
@@ -598,6 +601,7 @@ const place_svg_buys = function(svg_svg, data, srt_buys, orig_timeX, priceY, pri
 locX = event.offsetX; locY = event.offsetY;
 svg_svg = my_this.svg_zone; data = my_this.data; srt_sells = my_this.data.sells.srt_sells;
 update_hline = my_this.svg_ob.update_hline; pretty_num = my_this.pretty_num;
+update_bottom = my_this.svg_ob.update_bottom; update_top = my_this.svg_ob.update_top;
 get_obs_range = my_this.svg_ob.get_obs_range;
 calc_scale_wtfac = my_this.svg_ob.calc_scale_wtfac
 wtfac = calc_scale_wtfac(data); const wtmin = data.tmin * data.origmult;
@@ -608,6 +612,7 @@ wpfac = (data.height) / (data.pmax-data.pmin); wpmax = data.pmax;
 price_delta = my_this.svg_ob.prop_mo.last_lln.price_delta;
 sell_price_bounds = ((data.sells===undefined) || (data.sells == null)) ? [] : [0, data.sells.open.length]; 
 prop_mo = my_this.svg_ob.prop_mo;
+obs = data.sells; srts = srt_sells; on_time = orig_timeX; on_price = priceY; price_delta=3; pastBounds = [-1,srt_sells.length];
 sell_range = get_obs_range(data.sells, srt_sells, orig_timeX, priceY, price_delta, sell_price_bounds, "is_sell");
 MyEventFunction = getEventListeners(my_this.svg_zone).mouseover[0].listener
 */
@@ -616,7 +621,7 @@ const place_svg_sells = function(svg_svg, data, srt_sells, orig_timeX, priceY, p
   const wtmin = calc_scale_wtmin(data);
   const sell_range = get_obs_range(data.sells, srt_sells, orig_timeX, priceY, price_delta, sell_price_bounds, "is_sell");
 
-  const iv_filt = ((data.keep_iv === null) ? ((x)=>true) : ((x)=>(data.sells.ivs[x] == data.keep_iv)));
+  const iv_filt = (((data.keep_iv === null) || (data.keep_iv==='all')) ? ((x)=>true) : ((x)=>(data.sells.ivs[x] == data.keep_iv)));
   sell_select = [...sell_range.ret].filter(iv_filt);
   if (sell_select.length >= 100) {
     console.log("CONCERNING -- Sell select, something is concerning, we have sell_select of length " + sell_select.length);
@@ -803,9 +808,10 @@ const update_hline = function(ords, ordids, hline, data) {
  let nPath = '';
  const wtfac = calc_scale_wtfac(data); 
  const wtmin = data.tmin * data.origmult;
+ const wpfac = data.height / (data.pmax-data.pmin);
  for (let ii = 0; ii < ordids.length; ii++) {
     nPath = (nPath + 'M ' + Math.floor(wtfac*(ords.open[ordids[ii]] - wtmin)) + 
-                     ','  + Math.floor(data.height*(data.pmax-ords.price[ordids[ii]])/(data.pmax-data.pmin)) +
+                     ','  + Math.floor(wpfac*(data.pmax-ords.price[ordids[ii]])) +
                      ' H ' + Math.floor(wtfac*(ords.close[ordids[ii]] - wtmin)));
  }
  hline.setAttribute('d',nPath);
@@ -1190,5 +1196,5 @@ exports = {"add_svg_mouse_over":add_svg_mouse_over, "make_text_el":make_text_el,
    'generate_lln':generate_lln, 'make_hline':make_hline, 'make_svg_el':make_svg_el, 'write_ttip':write_ttip, 'calc_unscale_wtfac':calc_unscale_wtfac,
    'place_svg_buys':place_svg_buys, 'place_svg_sells':place_svg_sells, 'place_svg_trades':place_svg_trades,
    'calc_unscale_wtmin':calc_unscale_wtmin, 'seek_new_ps':seek_new_ps, 'get_obs_range':get_obs_range, 'calc_scale_wtfac':calc_scale_wtfac, 'calc_scale_wtmin':calc_scale_wtmin, 
-   'update_hline':update_hline}
+   'update_hline':update_hline, 'update_top':update_top, 'update_bottom':update_bottom}
 module.exports = exports;
