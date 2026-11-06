@@ -481,10 +481,11 @@ const binary_top = function(obs_tgt, srts, tgt_target) {
 // obs = data.buys; srts = srt_buys; on_time = 10; on_price = 22; price_delta=3; pastBounds = [-1,srt_buys.length];
 const get_obs_range = function(obs, srts, on_time, on_price, price_delta, pastBounds, on_string) {
   if ((obs === null) || (obs === undefined)) { return({new_range:[-1,-1],ret:[]}); }
-  if (obs.price[srts[0]] < on_price - price_delta) {
+  if ((srts === null) || (srts.length <= 0)) { return({new_range:[-1,-1],ret:[]}); }
+  if (obs.price[srts[0]] > on_price + price_delta) {
     return({'new_range': [obs.price.length, obs.price.length], ret:[]});
   }
-  if (obs.price[srts[srts.length01]] > on_price + price_delta) {
+  if (obs.price[srts[srts.length-1]] < on_price - price_delta) {
     return({'new_range':[-1,-1],ret:[]});
   } 
   let new_range = [update_bottom(obs.price,srts, on_price-price_delta, pastBounds[0]),
@@ -561,6 +562,25 @@ const place_svg_trades = function(svg_svg, data, srt_buys, orig_timeX, priceY, p
   prop_mo.n_trades = trade_range.ret.length;
   return(prop_mo.n_trades);
 }
+/*
+locX = event.offsetX; locY = event.offsetY;
+svg_svg = my_this.svg_zone; data = my_this.data; srt_buys = my_this.data.buys.srt_buys;
+update_hline = my_this.svg_ob.update_hline; pretty_num = my_this.pretty_num;
+update_bottom = my_this.svg_ob.update_bottom; update_top = my_this.svg_ob.update_top;
+get_obs_range = my_this.svg_ob.get_obs_range;
+calc_scale_wtfac = my_this.svg_ob.calc_scale_wtfac
+wtfac = calc_scale_wtfac(data); const wtmin = data.tmin * data.origmult;
+timeX = data.tmin + (data.tmax-data.tmin) * (locX*1.0)/(data.width);
+orig_timeX = timeX * data.origmult; 
+priceY = data.pmin + (data.pmax-data.pmin) * (data.height - locY*1.0)/(data.height);
+wpfac = (data.height) / (data.pmax-data.pmin); wpmax = data.pmax;
+price_delta = my_this.svg_ob.prop_mo.last_lln.price_delta;
+buy_price_bounds = ((data.buys===undefined) || (data.buys == null)) ? [] : [0, data.buys.open.length]; 
+prop_mo = my_this.svg_ob.prop_mo;
+obs = data.buys; srts = srt_buys; on_time = orig_timeX; on_price = priceY; price_delta=3; pastBounds = [-1,srt_buys.length];
+buy_range = get_obs_range(data.buys, srt_buys, orig_timeX, priceY, price_delta, buy_price_bounds, "is_buy");
+MyEventFunction = getEventListeners(my_this.svg_zone).mouseover[0].listener
+*/
 const place_svg_buys = function(svg_svg, data, srt_buys, orig_timeX, priceY, price_delta, buy_price_bounds, wpfac, wpmax) {
    const wtfac = calc_scale_wtfac(data);
    const wtmin = calc_scale_wtmin(data);
@@ -570,7 +590,7 @@ const place_svg_buys = function(svg_svg, data, srt_buys, orig_timeX, priceY, pri
    //} else {
    //  console.log("data.keep_iv is not null.  Buy escape"); debugger;
    //}
-   const iv_filt = (((data.keep_iv === null) || (data.keep_iv == 'all')) ? ((x)=>true) : ((x)=>(data.buys.ivs[x] == data.keep_iv)));
+   const iv_filt = (((data.keep_iv === null) || (data.keep_iv === 'all') || (!data.keep_iv)) ? ((x)=>true) : ((x)=>(data.buys.ivs[x] == data.keep_iv)));
    buy_select = [...buy_range.ret].filter(iv_filt);
    if (buy_select.length >= 100) {
      console.log("CONCERNING -- Buy select, something is concerning, we have buy_select of length " + buy_select.length);
@@ -811,7 +831,7 @@ const update_hline = function(ords, ordids, hline, data) {
  const wpfac = data.height / (data.pmax-data.pmin);
  for (let ii = 0; ii < ordids.length; ii++) {
     nPath = (nPath + 'M ' + Math.floor(wtfac*(ords.open[ordids[ii]] - wtmin)) + 
-                     ','  + Math.floor(wpfac*(data.pmax-ords.price[ordids[ii]])) +
+                     ', '  + Math.floor(wpfac*(data.pmax-ords.price[ordids[ii]])) +
                      ' H ' + Math.floor(wtfac*(ords.close[ordids[ii]] - wtmin)));
  }
  hline.setAttribute('d',nPath);
