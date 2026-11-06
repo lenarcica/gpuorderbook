@@ -830,9 +830,29 @@ const update_hline = function(ords, ordids, hline, data) {
  const wtmin = data.tmin * data.origmult;
  const wpfac = data.height / (data.pmax-data.pmin);
  for (let ii = 0; ii < ordids.length; ii++) {
-    nPath = (nPath + 'M ' + Math.floor(wtfac*(ords.open[ordids[ii]] - wtmin)) + 
-                     ', '  + Math.floor(wpfac*(data.pmax-ords.price[ordids[ii]])) +
-                     ' H ' + Math.floor(wtfac*(ords.close[ordids[ii]] - wtmin)));
+    const t0 = Math.floor(wtfac*(ords.open[ordids[ii]] - wtmin));
+    const p0 =  Math.floor(wpfac*(data.pmax-ords.price[ordids[ii]]));
+    const hh =  Math.floor(wtfac*(ords.close[ordids[ii]] - wtmin));
+    if (DEBUG) {
+    if (Number.isNaN(hh)) {
+      console.log("Error update_hline: hh is NaN on ii="+ii+"/" + ordids.length);
+      console.log("   --  ords.close[" + ordids[ii] + " is " + ords.close[ordids[ii]]);
+      console.log("   -- wtmin = " + wtmin); debugger;
+    }
+    if (Number.isNaN(t0)) {
+      console.log("Error update_hline: t0 is NaN on ii="+ii+"/" + ordids.length);
+      console.log("   --  ords.open[" + ordids[ii] + " is " + ords.open[ordids[ii]]);
+      console.log("   -- wtmin = " + wtmin); debugger;
+    }
+    if (Number.isNaN(p0)) {
+      console.log("Error update_hline: p0 is NaN on ii="+ii+"/" + ordids.length);
+      console.log("   --  ords.price[" + ordids[ii] + " is " + ords.price[ordids[ii]]);
+      console.log("   -- wtmin = " + wtmin); debugger;
+    }
+    }
+    nPath = (nPath + 'M ' + t0  + 
+                     ', '  + p0 + 
+                     ' H ' + hh);
  }
  hline.setAttribute('d',nPath);
  hline.setAttribute('stroke', 'black');
