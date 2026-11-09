@@ -43,11 +43,45 @@ trades: {
    qty: [  100,  -20,   30, -20, 140],
  price: [ 22.5,   22,   23, 25.5, 27]
 },
+//is_filtered: true, // run tests even though this should be good
 squish_f: demo_sqrt_squish,  
 data_type: "default_data"
 }
 
+const null_filter = function(ords) {
+  if ((ords == undefined) || (ords === null) || (ords.length <= 0)) { return(-1); }
+  const nanfilt = ((x,ix)=>(!(Number.isNaN(Number(ords.price[ix]))))); 
+  ords.vs = ords.vs.filter(nanfilt);
+  ords.qty = ords.qty.filter(nanfilt)
+  ords.open = ords.open.filter(nanfilt);
+  ords.close = ords.close.filter(nanfilt);
+  if (ords.close.length != ords.price.length) {
+    console.log("demo_data.js: Warning your orders contained null/nan prices!");
+  }
+  ords.price = ords.price.filter(nanfilt);
+}
+
+const hit_filter = function(ords, hits) {
+  if ((ords == undefined) || (ords === null) || (ords.length <= 0)) { return(-1); }
+  let nhits = 0;
+  for (let ii = 0; ii < hits.length;ii++) { nhits += hits[ii]; }
+  if (nhits <=0) {
+    return(10);
+  }
+  const hitfilt = ((x,ix)=>(hits[ix] <=0));
+  ords.vs = ords.vs.filter(hitfilt);
+  ords.qty = ords.qty.filter(hitfilt)
+  ords.open = ords.open.filter(hitfilt);
+  ords.close = ords.close.filter(hitfilt);
+  if (ords.close.length != ords.price.length) {
+    console.log("demo_data.js: Hit Filt Warning your orders contained null/nan prices!");
+  }
+  ords.price = ords.price.filter(hitfilt);
+  return(10);
+}
 //exports = {'demo_data':demo_data};
 //module.export = exports;
-exports = {'demo_data':demo_data}
+//exports = {'demo_data':demo_data};
+//module.export = exports;
+exports = {'demo_data':demo_data, 'null_filter':null_filter, 'hit_filter':hit_filter}
 module.exports = exports;

@@ -15,28 +15,49 @@
 //import noUiSlider from '../external/nouislider.js';
 var noUiSlider = require("../external/nouislider.js"); // This external slider is a requirement
 require('../external/nouislider.min.css'); // Import the CSS as well
+
+const printer = require("./printer.js");  const make_print_n = printer.make_print_n;
+const dPRINT_N = (DEBUG) ? printer.make_print_n({'s':[],'verbose':  (DEBUG) ? 1 : 0},'ob.js()') : (function(x,y) { return(0) });
 //const d3 = require("../external/d3.v7.js");  // We are not using any D3 Elements at this time.
 console.log("ob require, do we have d3?");
+DEBUG && dPRINT_N(1, " -- load debug.js");
 const debug_code = require("./debug.js");
+
+DEBUG && dPRINT_N(1, " -- load demo_data.js");
 const demo_data = require("./demo_data.js");
-const printer = require("./printer.js");  const make_print_n = printer.make_print_n;
+
 const default_verbose_ob = {'s':[], 'verbose':0};
 //const nouislider = require("../external/nouislider.js");
+//
+DEBUG && dPRINT_N(1, " -- load draw_ob.js");
 const draw_ob = require("./draw_ob.js");
+
+DEBUG && dPRINT_N(1, " -- load_svg_ob.js");
 const svg_ob = require("./svg_ob.js");
+
+DEBUG && dPRINT_N(1, " -- load bars.js");
 const bars = require("./bars.js");
+
+DEBUG && dPRINT_N(1, " -- load verify_levs.js");
+const verify_levs = require("./ord_algo/verify_levs.js");
+//const verify_levs = null;
 //esbuild --bundle --format=esm --outdir=outwidget/ord_algo static/internal/ord_algo/ord_algo.js
 //esbuild --bundle --format=esm --outdir=outwidget/cumulate static/internal/ord_algo/cumulate.js
 //const ord_algo = require("../../outwidget/ord_algo/ord_algo.js");
 //const cumulate = require("../../outwidget/cumulate/cumulate.js");
 
+DEBUG && dPRINT_N(1, " Load ord_algo.js");
 const ord_algo = require("./ord_algo/ord_algo.js");
+
+DEBUG && dPRINT_N(1, " Load cumulate.js");
 const cumulate = require("./ord_algo/cumulate.js");
 const cumulate_dside = cumulate.cumulate_dside; const sort_tp = cumulate.sort_tp;
 
+DEBUG && dPRINT_N(1, " LOAD form_default.json");
 const default_form_data = require('./forms/form_default.json');
 
 const make_text_el = svg_ob.make_text_el;
+DEBUG && dPRINT_N(1, " LOAD pretty_num.js");
 const pretty_num = require("../internal_lib/pretty_num.js");
 const bigmult = pretty_num.bigmult
 const svgns = "http://www.w3.org/2000/svg"; // SVG Namespace
@@ -145,14 +166,14 @@ const run_algo = function(my_this, PRINT_N) {
 
 //export class obwidget {
 class obwidget {
-  data = {...demo_data.demo_data};  printer = printer;
+  data = {...demo_data.demo_data};  printer = printer; demo_data=demo_data;
   gpu_pipeline = null; debug_button=null; verbose_ob=null;
   renderer = null; device=null; adapter=null; widgetDiv=null; formDiv=null;
   count_renders = 0; draw_ob = draw_ob; svgns = svgns; svg_ob = svg_ob; pretty_num = pretty_num; time_range_dict = [0,1];
   unique_prices = []; oad={}; algo_data = {}; ps = null;  bigmult = pretty_num.bigmult;  ord_algo=ord_algo;
   do_plots = {'do_nbbo':true,'do_trades':true,'do_quotes':true,'do_wp':true}; bars = bars;
   bardr = null; pause_render = false; debug_setting = DEBUG;
-  price_delta = default_price_delta;
+  price_delta = default_price_delta; verfiy_levs=verify_levs;
   constructor({model, el}) {
     this.randomStr = (Math.random().toString(36).substring(2, 5) +
           Math.random().toString(36).substring(2, 5));
@@ -162,11 +183,12 @@ class obwidget {
     const vstr = "obwidget()";
     this.PRINT_N = printer.make_print_n(this.verbose_ob, vstr);
     const PRINT_N = this.PRINT_N;
+    DEBUG && this.PRINT_N(1, "-------------------------------------------------------------------------");
     DEBUG && this.PRINT_N(1, "obwidget() -- constructor called. -- verbose = " + (this.verbose));
     DEBUG && this.PRINT_N(0, "  We have initiated obwidget with verbose = " + this.verbose);
     DEBUG && this.PRINT_N(0, " We completed constructor.  Setting up Defaults.");
     this.setupDefaults();
-    this.el = el; this.model = model;  this.draw_ob.verbose_ob = this.verbose_ob;
+    this.el = el; this.model = model;  this.draw_ob.verbose_ob = this.verbose_ob;  this.verify_levs = verify_levs;
     const in_data = this.model.get('data');
     if (!(!(in_data))) {  
       this.height = ((!(!(in_data.height))) && (is_numeric(in_data.height))) ? in_data.height : 600;
@@ -225,6 +247,67 @@ class obwidget {
     PRINT_N(2, "Running Orderbook Algorithm");
     run_algo(my_this, PRINT_N);
     PRINT_N(2, " --- Concluded Running Algorithm.");
+  }
+  verify_quotes() {
+    const my_this = this;
+    const PRINT_N = printer.make_print_n(my_this.verbose_ob, "ob.js->verify_quotes(): ");
+    PRINT_N(1, " Begin verify quotes.");
+    const nbbo = my_this.data.nbbo;
+    if ((nbbo === undefined) || (nbbo === null) || (!(nbbo)) || (nbbo.time === undefined)) {
+      PRINT_N(-6, "  no nbbo to do verification!"); return(-1);
+    }
+    const v_not = nbbo['time'];  const v_nop = nbbo['nbo'];  const eqstate=false; const timetouch= 0;
+    //const srt_nbbo = my_this.verify_levs.make_srt_nbbo(v_nop, v_not);
+    const n_nbbo = nbbo['time'].length;
+    const nbad = [0,0]; const ncnt = [0,0];
+    const rej_crit = -0.01;
+    PRINT_N(1, " We have the first NBBO elements extracted.");
+    if (!(!(this.data.buys))) {
+      const srt_nbbo = my_this.verify_levs.make_srt_nbbo(0, v_nop, v_not);
+      const nq = my_this.data.buys.price.length;
+      const ords = my_this.data.buys;
+      PRINT_N(1, " -- working on buys of length " + nq + ".");
+      my_this.data.buys.cross = Array(nq).fill(0);
+      //const u_p = [...new Set(ords.price)].sort((a,b)=>(a-b));
+      //v_s = Array(nq).fill(0.0); v_p = ords.price; verbose = 1; bs01 = 0;
+      const srt_v = my_this.verify_levs.make_srt_v_basic(0, ords.price, ords.open);
+      try {
+        nbad[0] = my_this.verify_levs.verify_cross(0, rej_crit, ords.cross,  srt_v, 
+              Array(nq).fill(0), ords.price, ords.open, ords.close,
+              srt_nbbo, v_nop, v_not, this.orig.tmax, eqstate, this.verbose_ob, timetouch); 
+      } catch {
+        PRINT_N(-6, "Error, failure on verify levs buys. you need to study better!"); debugger;
+      }
+      for (let ii = 0; ii < nq; ii++) {
+        if (ords.cross[ii] > 0) { ncnt[0] = ncnt[0] + 1; }
+      }
+      ords.cnt_cross = ncnt[0];
+    }
+    if (!(!(this.data.sells))) {
+      const srt_nbbo = my_this.verify_levs.make_srt_nbbo(0, v_nop, v_not);
+      const nq = my_this.data.sells.price.length;
+      const ords = my_this.data.sells;
+      //const u_p = [...new Set(ords.price)].sort((a,b)=>(b-a));
+      PRINT_N(1, " -- working on sells of length " + nq + ".");
+      my_this.data.sells.cross = Array(nq).fill(0);
+      //v_s = Array(nq).fill(0.0); v_p = ords.price; verbose = 1; bs01 = 0;
+      const srt_v = my_this.verify_levs.make_srt_v_basic(0, ords.price, ords.open);
+      try {
+        nbad[1] = my_this.verify_levs.verify_cross(1, rej_crit, ords.cross, srt_v, 
+              Array(nq).fill(1), ords.price, ords.open, ords.close,
+              srt_nbbo, v_nop, v_not, this.orig.tmax, eqstate, this.verbose_ob, timetouch); 
+      } catch {
+        PRINT_N(-6, "Error, failure on verify levs sells. you need to study better!"); debugger;
+      }
+      for (let ii = 0; ii < nq; ii++) {
+        if (ords.cross[ii] > 0) { ncnt[1] = ncnt[1] + 1; }
+      }
+      ords.cnt_cross = ncnt[1];
+    }
+    if (ncnt[0] + ncnt[1] > 0) {
+      PRINT_N(-2, " Note Verify Quotes found [" + ncnt.join(",") +"] bad results.");
+    }
+    
   }
   configureData(in_data, model) {
     const PRINT_N = printer.make_print_n(this.verbose_ob, "ob.js->configureData()");
@@ -408,9 +491,24 @@ class obwidget {
     const my_this = this;
     this.orig.bi_st0 = bi_st0;
     const mm = (x) => (bi_st0 + BigInt(Math.floor(multi*x)));
+    if ((this.data.is_filtered !== undefined) && (this.data.is_filtered !== null) && (this.data.is_filtered == true)) {
+
+    } else {
+      DEBUG && PRINT_N(1, " :: Performing NULL Filtering.");
+      my_this.demo_data.null_filter(my_this.data.buys); 
+      my_this.demo_data.null_filter(my_this.data.sells); 
+      DEBUG && PRINT_N(1, " :: we need to verify quotes for buys and sells.");
+      my_this.verify_quotes();
+      if ((!(!(my_this.data.buys))) && (my_this.data.buys.cnt_cross > 0)) {
+        //my_this.demo_data.hit_filter(my_this.data.buys, my_this.data.buys.cross);
+      }
+      if ((!(!(my_this.data.sells))) && (my_this.data.sells.cnt_cross > 0)) {
+        //my_this.demo_data.hit_filter(my_this.data.sells, my_this.data.sells.cross);
+      }
+    }
     DEBUG && PRINT_N(1, " Calculating Unique Prices.");
     this.unique_prices = [...new Set([...((this.data.buys !== null) ? this.data.buys.price : []),...(
-                                          (this.data.sells != null) ? this.data.sells.price: [])])].sort();
+                                          (this.data.sells != null) ? this.data.sells.price: [])])].sort((a,b)=>(a-b));
     if (!(!(this.data.buys))) {
       this.data.buys.u_p = [...new Set([...(this.data.buys !== null) ? this.data.buys.price: []])].sort((a,b)=>(a-b));
     }

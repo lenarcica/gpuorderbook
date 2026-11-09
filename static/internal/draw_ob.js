@@ -10,7 +10,7 @@
 // Just a console.log() configuration library:
 const printer = require("./printer.js");
 const is_numeric = printer.is_numeric;
-const default_verbose_ob = {'s':[], verbose:0};
+const default_verbose_ob = {'s':[], 'verbose':0};
 var verbose_ob = default_verbose_ob;
 var PRINT_N = printer.make_print_n(default_verbose_ob,"draw_ob:");
 var dPRINT_N = printer.make_print_n(default_verbose_ob,"draw_ob:");
@@ -72,10 +72,10 @@ function generate_gpu_renderPassDescriptor() {
 //   of the GPU structure.  For 2D this is simpler than requirements for 3D
 function generate_individual_pipeline( device, module, verbose_ob, what_pipeline) {
   const vstr = "draw_ob.js->generate_gpu_renderPipeline(" + what_pipeline + ",vb=" +verbose_ob.verbose+"): ";
-  const PRINT_N = (DEBUG)  ? printer.make_print_n(verbose_ob, vstr) : dPRINT_N;
+  const PRINT_N = ((DEBUG)  ? printer.make_print_n(verbose_ob, vstr) : dPRINT_N);
   DEBUG && PRINT_N(3,"-- initiated");
   presentationFormat = navigator.gpu.getPreferredCanvasFormat();
-  PRINT_N(2," -- Creating the pipeline");
+  DEBUG && PRINT_N(2," -- Creating the pipeline");
   //const positionBufferLayoutDesc = createDepthTextureDesc(device, a_gpuwidget, what_pipeline, verbose_ob) 
   //console.log(InitT + "-- DepthTextureDesc was created supplying back in pipeline about to call createRenderPipeline -- ");
   const individual_pipeline = device.createRenderPipeline({
@@ -132,8 +132,8 @@ function createDepthTextureDesc(device, a_obwidget, what_depth_texture, verbose_
            colorTextureView:colorTextureView})
 }
 function generate_gpu_module(device, module_data, verbose_ob) {
-  const PRINT_N = printer.make_print_n(verbose_ob,
-   "draw_ob.js->generate_gpu_module(" + module_data.label + ", vb=" + verbose_ob.verbose +"): ");
+  const PRINT_N = ((DEBUG) ? printer.make_print_n(verbose_ob,
+    ("draw_ob.js->generate_gpu_module(" + module_data.label + ", vb=" + verbose_ob.verbose +"): ")) : dPRINT_N);
   DEBUG && PRINT_N(1, "  intiating generation of the module");
   const module = device.createShaderModule({
     label: module_data.label, code: module_data.code });
@@ -200,6 +200,7 @@ function OB_generate_gpu_pipeline(gpu_pipeline, gpu_context, adapter, device, a_
        trades_pipeline: generate_individual_pipeline(device, module_trades, verbose_ob, "trades_pipeline"),
        buffers: buffers,
        verbose: a_obwidget.verbose,
+       verbose_ob: ((DEBUG) ? verbose_ob : null),  
        context: gpu_context,
        encoder: null
     } 
@@ -613,7 +614,7 @@ async function get_device_buffer(gpu_pipeline, a_device_buffer) {
     sourceBuffer = gpu_pipeline.device_trades_buffers; fData = "trades";
     lengthBuffer = gpu_pipeline.buffers.trades.price.length; 
   }
-  const PRINT_N = printer.make_print_n(gpu_pipeline.verbose, "draw_ob.js->get_device_buffer(" + fData + "): ");
+  const PRINT_N = ((DEBUG) ? printer.make_print_n(gpu_pipeline.verbose_ob, "draw_ob.js->get_device_buffer(" + fData + "): ") : dPRINT_N);
   DEBUG && PRINT_N(1, "  Begin looking for length " + lengthBuffer);
   const commandEncoder = gpu_pipeline.device.createCommandEncoder();
   commandEncoder.copyBufferToBuffer(
@@ -757,7 +758,7 @@ function populate_device_verts_buffers(device, gpu_pipeline) {
   device.queue.writeBuffer(gpu_pipeline.msg_vert_device_buffer, 0, buffers.msg_vert_buffer);
 }
 function update_buffers_wp(data, verbose_ob) {
-  const PRINT_N = printer.make_print_n(verbose_ob, "draw_ob.js->update_buffers_wp(): ");
+  const PRINT_N = ((DEBUG) ? printer.make_print_n(verbose_ob, "draw_ob.js->update_buffers_wp(): ") : dPRINT_N);
   const divit = 1.0 / Number(bigmult(data.unit));
   const bi_st0 = ((data.ps !== null) && (data.ps !== undefined) && (data.ps.bi_st0 !== undefined)) ? BigInt(data.ps.bi_st0) : 0n;
   const map_back_bi = ((x) => (divit * Number(x - bi_st0)));
@@ -828,7 +829,7 @@ function update_buffers_wp(data, verbose_ob) {
    }
 }
 function create_data_buffers(device, data, verbose_ob) { 
-  const PRINT_N = printer.make_print_n(verbose_ob, "draw_ob.js->create_data_buffers(): ");
+  const PRINT_N = (DEBUG ? printer.make_print_n(verbose_ob, "draw_ob.js->create_data_buffers(): ") : dPRINT_N);
   const divit = 1.0 / Number(bigmult(data.unit));
   const bi_st0 = BigInt(data.ps.bi_st0);
   const map_back_bi = ((x) => (divit * Number(x - bi_st0)));
