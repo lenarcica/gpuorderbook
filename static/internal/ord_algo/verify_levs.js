@@ -142,19 +142,24 @@ const fast_alter_cross = function(ab01, ptgt, srt_nbbo, v_nop, out_ob, ip_eq, ip
   let write_i = 0;
   const nx_0 = out_ob.x.length; 
   let on_i = 0;
+  const hitf = ((pp,np) => ((ab01==0 ? 1 : -1) * (
+                 (pp==ptgt) ? ((np>ptgt) ? 1 : (np<ptgt) ? -1 :0)
+               : (pp>ptgt)  ? ((np>ptgt) ? 0 : (np==ptgt) ? -1 : -2)
+               :              ((np>ptgt) ? 2 : (np==ptgt) ? 1 : 0))));
+  const critp = ((ab01===0) ? ((np) => (np>=ptgt)) : ((np)=>(np<=ptgt)));
   for (on_i=0;on_i < nx_0;on_i++) {
-    const on_p = v_nop[out_ob.x[on_i]];
+    const ii = out_ob.x[on_i];
+    const on_p = v_nop[ii];
     // It is possible if we are already in green territory, we can assume red on t=-1
-    const prv_p = ( (out_ob.x[on_i]>0) ? v_nop[out_ob.x[on_i]-1] :
-                  ( (ab01 === 0) ? ((on_p >= ptgt) ? (ptgt-1) : on_p) :
-                                   ((on_p <= ptgt) ? (ptgt+1) : on_p)));
     // Our theory is that last line matters only if it is critical since can't assume jump after
     //  all that matters for last move is if its previous stage had a move.
-    const nxt_p = ( out_ob.x[on_i]<nm1) ? v_nop[out_ob.x[on_i]+1] : on_p;
-    if ((on_p == ptgt)  ||
-        ((on_p > ptgt) && ((prv_p<=ptgt) || (nxt_p <= ptgt))) ||
-        ((on_p < ptgt) && ((prv_p>=ptgt) || (nxt_p >= ptgt)) ) ) {
-      out_ob.x[write_i] = out_ob.x[on_i]; write_i=write_i+1;
+    const hitp = (ii==0) ? critp(on_p) : hitf(v_nop[ii-1], on_p);
+    const hitn = (ii<nm1) ? hitf(on_p,v_nop[ii+1]) : critp(on_p);
+    if ((hitp != 0)  && ((write_i==0) || out_ob.x[write_i-1] != ii)) {
+      out_ob.x[write_i] = ii;   write_i = write_i + 1;
+    }
+    if ((ii < nm1) && (hitn != 0) && ((write_i==0) || (out_ob.x[write_i-1] != ii+1))) {
+      out_ob.x[write_i] = ii+1; write_i = write_i + 1;
     }
   }
   out_ob.x = out_ob.x.filter((x,i)=>i<write_i); // Everyone else is removed as they are no longer valid skips.
@@ -176,20 +181,22 @@ const fast_alter_cross = function(ab01, ptgt, srt_nbbo, v_nop, out_ob, ip_eq, ip
       continue; // Already addressed
     }
     const on_p = v_nop[on_sti];
-    const prv_p = ( (on_sti>0) ? v_nop[on_sti-1] :
-                    ( (ab01===0) ? ((on_p>=ptgt) ? (ptgt-1) : onp) :
-                                   ((on_p<=ptgt) ? (ptgt+1) : onp)));
-    const prv_sti = on_sti>0 ? on_sti-1 : 0;
-    const nxt_p = ( (on_sti>n_n-1) ? v_nop[on_sti+1] : on_p );
-    if ( ((prv_p<=ptgt) && (on_p>=ptgt)) ||
-         ((prv_p>=ptgt) && (on_p<=ptgt))) {
+    const hit_p = ((on_sti>0) ? critp(on_p) : hitf(v_nop[on_sti-1],on_p));
+    const hit_n = ((on_sti<nm1) ? hitf(on_p, v_nop[on_sti+1]) : critp(on_p));
+    if (hit_p != 0) {
+      const prv_sti = (on_sti>0) ? on_sti-1 : 0;
       if (!(out_ob.x.includes(prv_sti))) {
         out_ob.x.push(prv_sti);
       }
+      if (!(out_ob.x.includes(on_sti))) {
+        out_ob.x.push(on_sti);
+      }
     }
-    if ((on_p === ptgt) ||
-        ((on_p > ptgt) && (nxt_p<=ptgt)) ||
-        ((on_p < ptgt) && (nxt_p>=ptgt))) {
+    if (hit_n != 0) {
+      const nxt_sti = (on_sti<nm1) ? on_sti+1 : nm1;
+      if (!(out_ob.x.includes(nxt_sti))) {
+        out_ob.x.push(on_sti);
+      }
       if (!(out_ob.x.includes(on_sti))) {
         out_ob.x.push(on_sti);
       }
@@ -561,7 +568,7 @@ p_exports.resort_out_x = resort_out_x;
  verify_cross = my_this.verify_levs.verify_cross;
  rej_crit = 10; verbose_ob = {'s':[], 'verbose':verbose};
  verify_cross(bs01, rej_crit, out_v,  srt_v, v_s, v_p, v_ot, v_ct,
-              srt_nbbo, v_nop, v_not, eqstate, verbose_ob, timetouch); 
+              srt_nbbo, v_nop, v_not, tmax, eqstate, verbose_ob, timetouch); 
  n_n = srt_nbbo.length; 
  cnt_in = 0; cnt_ov = 0;  cnt_neg = 0;
  for (let ii = 0; ii < out_v.length; ii++) {
@@ -588,7 +595,7 @@ const verify_cross=function(bs01, pdiff, out_v, srt_v, v_s, v_p, v_ot, v_ct,
   //let v_nop = *v_nop; let v_not = *v_not;
   const n_v = out_v.length; const n_n = v_nop.length; 
   const vstr = ("verify_crosses_" + ((bs01===2) ? "both " : ((bs01==1) ? "sell " : "buy")) + 
-    "(n_v=" + n_v + ",n_n=" + n_n + "tt=" + (timetouch ? "touch" : "cross") +"): ");
+    "(pd=" + pdiff + ",v=" + n_v + ",n=" + n_n + ",tt=" + (timetouch ? "touch" : "cross") +"): ");
   const v_ob = {'s':verbose_ob.s, 'verbose': verbose_ob.verbose + (DEBUG) ? 5 : 0};
   const PRINT_N = printer.make_print_n(v_ob, vstr);
   PRINT_N(1, ": We begin");
@@ -618,10 +625,10 @@ const verify_cross=function(bs01, pdiff, out_v, srt_v, v_s, v_p, v_ot, v_ct,
   let ix = 0; 
   // crit bad price.
   const cbp = ((eqstate == true)
-                  ? (bs01==0 ? (qp,np) => (Number.isNaN(np) ? false : qp + pdiff >=np)
-                             : (qp,np) => (Number.sNaN(np) ? false : qp - pdiff <=np))
-                  : (bs01==0 ? (qp,np) => (Number.isNaN(np) ? false : qp + pdiff >np) 
-                             :  (qp,np) => (Number.isNaN(np) ? false : qp - pdiff <np))
+                  ? (bs01==0 ? (qp,np) => (Number.isNaN(np) ? false : (qp + pdiff >=np))
+                             : (qp,np) => (Number.sNaN(np) ? false : (qp - pdiff <=np)))
+                  : (bs01==0 ? (qp,np) => (Number.isNaN(np) ? false : (qp + pdiff >np))
+                             :  (qp,np) => (Number.isNaN(np) ? false : (qp - pdiff <np)))
                   );
   // time criterion
   const tmc = ((((typeof(timetouch)=='bigint') && (timetouch==0n)) || (timetouch=0)) 
@@ -671,8 +678,6 @@ const verify_cross=function(bs01, pdiff, out_v, srt_v, v_s, v_p, v_ot, v_ct,
     const v_on_ot = v_ot[srt_v[i_v]];
     DEBUG && PRINT_N(3, ":: ----: v_on_ot selected at " + v_on_ot + ", v_on_p=" + v_on_p + " pdiff=" + pdiff + ", on_plev=" + on_plev + " out_b.x=[" + out_ob.x.join(",") + "]");
     const on_incr = v_on_p + pdiff;
-    //DEBUG && PRINT_N(3, ":: ----: on_incr = " + on_incr); 
-    //debugger;
     if ((v_on_p+pdiff) != on_plev) {
       DEBUG && PRINT_N(4, ":: ----: v_on_p+pdiff are greater than on_plev.  We will run fast_alter_cross.");
       on_plev = v_on_p + pdiff;
@@ -684,10 +689,7 @@ const verify_cross=function(bs01, pdiff, out_v, srt_v, v_s, v_p, v_ot, v_ct,
       DEBUG && PRINT_N(4, ":: ----:  We are running fast_alter now: on_plev=" + on_plev + ", i_v=" + i_v + "/" + n_v); 
       //if (i_v == 3) { debugger; }
       nx = fast_alter_cross(bs01, on_plev, srt_nbbo, v_nop, out_ob);
-      //PRINT_N(4, ":: done with try catch.");
-      //PRINT_N(2, " Sorring out_ob.x");
       if ((out_ob.x !== null) && (out_ob.x.length > 1)) { out_ob.x = (out_ob.x.sort((a,b)=>(a-b))); }
-      //PRINT_N(3, " cnt calc cross go larger.");
       cnt_calc_cross += 1; 
       DEBUG && PRINT_N(4,":: ----: We have updated fast_alter cross.");
       on_ix = 0;
@@ -722,6 +724,7 @@ const verify_cross=function(bs01, pdiff, out_v, srt_v, v_s, v_p, v_ot, v_ct,
           ", but local price=" + v_p[srt_v[i_v]] + " for pdiff=" + pdiff + ", v_nop ranges = [" + v_nop[srt_nbbo[0]] + 
           "," + v_nop[srt_nbbo[n_nm1]] + "], what do we detect?");
       if (cbp(v_on_p,v_nop[0])) {
+        DEBUG && PRINT_N(-6, " Not sure this should of occured, data should have been primed for this."); debugger;
         if ((v_on_ot <= v_not[um1(n_n)]) && (v_on_ct >= v_not[0]) && (tmc(v_on_ot, v_on_ct, v_not[0], tmax))) {
           out_v[srt_v[i_v]] = 0; cnt_bad++; continue;
         }
@@ -755,8 +758,13 @@ const verify_cross=function(bs01, pdiff, out_v, srt_v, v_s, v_p, v_ot, v_ct,
          const next_np = v_not[next_n];
          const crit_on = cbp( v_on_p, v_nop[current_n]);
          if (crit_on && tmc(v_on_ot, v_on_ct, v_on_not, v_on_not_next)) {
-           out_v[srt_v[i_v]] = current_n; cnt_bad++; break;
-         } else if (crit_on) {
+           out_v[srt_v[i_v]] = current_n; cnt_bad++; i_x = nx; break;
+           if ((bs01 ==0) && (srt_v[i_v] == 10)) { 
+             PRINT_N(-6, " Let's debug this issue. srt_v[i_v]=" + srt_v[i_v]);
+           }
+         } 
+         /*
+          (crit_on) {
            if (v_on_ct < v_on_not) {
              // No match
            } else if ((v_on_ct == v_on_not) && (tt0)) {
@@ -800,7 +808,8 @@ const verify_cross=function(bs01, pdiff, out_v, srt_v, v_s, v_p, v_ot, v_ct,
               }
            }
          }
-         if (out_v[srt_v[i_v]] < n_n) { break; }
+         */
+         if ((out_v[srt_v[i_v]] >= 0) && (out_v[srt_v[i_v]] < n_n)) { break; }
        }
        if (out_v[srt_v[i_v]] >= n_n) {
          cnt_bad++;
@@ -821,6 +830,7 @@ p_exports.verify_cross= verify_cross;
 const validate_out_v=function(bs01, pdiff, out_v, out_v2, srt_v, v_s, v_p, v_ot, v_ct,
          srt_nbbo, v_nop, v_not, tmax, eqstate, verbose_ob, timetouch) {
   let cnt_error = 0; const n_v = out_v.length; let error_v = [];
+  const bsgn = (bs01==0) ? 1 : -1;
   let mx_ct = v_ct[0];  for (let ii = 0; ii < v_ct.length; ii++) { if (v_ct[ii] > mx_ct) { mx_ct=v_ct[ii]}}
   const tt = ((typeof(timetouch)=='bigint') 
                 ? (typeof(v_ot)=='bigint') ? timetouch : Number(timetouch)
@@ -828,11 +838,11 @@ const validate_out_v=function(bs01, pdiff, out_v, out_v2, srt_v, v_s, v_p, v_ot,
   const n_n = v_nop.length;  const n_nm1 = (n_n>0) ? n_n-1 : 0;
   const out_crit =  ((eqstate == false) 
                        ? ((bs01 == 0) 
-                           ? (vp,nbop) => ((!Number.isNaN(nbop)) && (vp + pdiff > nbop))
-                           : (vp,nbop) => ((!Number.isNaN(nbop)) && (vp-pdiff < nbop)) )
+                           ? (vp,nbop) => ((!Number.isNaN(nbop)) && ((vp + pdiff) > nbop))
+                           : (vp,nbop) => ((!Number.isNaN(nbop)) && ((vp-pdiff) < nbop)) )
                        : ((bs01 == 0) 
-                           ? (vp,nbop) => ((!Number.isNaN(nbop) && (vp + pdiff >= nbop))) 
-                           : (vp,nbop) => ((!Number.isNaN(nbop) && (vp-pdiff <= nbop))) ) );
+                           ? (vp,nbop) => ((!Number.isNaN(nbop) && ((vp + pdiff) >= nbop))) 
+                           : (vp,nbop) => ((!Number.isNaN(nbop) && ((vp-pdiff) <= nbop))) ) );
   const time_crit = ( (((typeof(timetouch)=='bigint') && (timetouch == 0n)) || (timetouch == 0)) 
                       ? (ot,ct,nto,ntc) =>  ((ot<=ntc) && (ct>=nto))
                       : ((ot,ct,nto,ntc) => (tt < ((ntc<ct)?ntc:ct) - ((ot>nto)?ot:nto)) ));
@@ -862,6 +872,10 @@ const validate_out_v=function(bs01, pdiff, out_v, out_v2, srt_v, v_s, v_p, v_ot,
        cnt_error++;
      } else if ((out_v[on_v] >= 0) && (an_error == 0)) {
        console.log("Error on_v=" + on_v + "/" + n_v + ", out_v[" + on_v + "] = " + out_v[on_v] + ", out_v2=" + out_v2[on_v] + " but we didn't find a cross manually.");
+      console.log(" EEE[bs01=" + bs01+ "] Note v_p[" + on_v + "] = " + v_p[on_v] + " + " + (bsgn*pdiff) + "=" + (v_p[on_v] + (bsgn*pdiff)) + " versuss nbbo[" + out_v[on_v] + "] = " + 
+                   (v_nop[out_v[on_v]]) + " we say out_crit is " + out_crit(v_p[on_v], v_nop[out_v[on_v]]));
+      console.log(" EEE note quote is (" + v_ot[on_v] + "," + v_ct[on_v] + ") and first of this nbbo from " + v_not[out_v[on_v]] + ", " + 
+                      ((out_v[on_v] < v_nop.length-1) ? v_not[out_v[on_v]+1] : tmax) + "."); 
        cnt_error++;
      }
   }
