@@ -364,7 +364,7 @@ const calc_mc_m_barrier = function(xb, bs01, barrier_pi) {
 // Print the Exchange Book after we have error.
 const print_xb = function(xb, bs01, str_print_event) {
   const sdbs = (bs01==0) ? "B" : "S";
-  const PRINT_N = make_print_n(xb.verbose_ob,"");
+  const PRINT_N = make_print_n(xb.verbose_ob,"pxb(): ");
   PRINT_N(0, "-----------------------------------------------------------");
   PRINT_N(0, " Print Event, print_xb(" + str_print_event + ")");
   PRINT_N(0, "--- xb: Side = " + sdbs); 
