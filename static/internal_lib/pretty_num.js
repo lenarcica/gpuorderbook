@@ -80,6 +80,22 @@ function pretty_num(low, high, n, include10) {
   }
   return(propRange);
 }
+const basic_hms = function(itime) {
+   const bi_itime = BigInt(itime);
+   const frac = bi_itime % 1000000000n;
+   const secs = (bi_itime % 60000000000n) /  1000000000n;
+   const mins = (bi_itime % 3600000000000n) / 60000000000n;
+   const hrs  = (bi_itime % (24n * 3600n * 1000000000n)) / (3600n * 1000000000n);
+   const str_hrs = (("" + hrs).length==0) ? ("00") : (("" + hrs).length == 1) ? ("0" + hrs) : hrs;
+   const str_mins = (("" + mins).length==0) ? ("00") : (("" + mins).length == 1) ? ("0" + mins) : mins;
+   const str_secs = (("" + secs).length==0) ? ("00") : (("" + secs).length == 1) ? ("0" + secs) : secs;
+   const rpx = function(sx,n) { let jt = []; 
+                     for (let i=0;i<n;i++) { jt.push(sx); }
+                     return(jt.join("")) }
+   const str_frac = (frac == 0n) ? "" : ("." + rpx("0", 8-Math.floor(Math.log10(Number(frac)))) + Number(frac));
+   return("" + str_hrs + ":" + str_mins + ":" + str_secs + str_frac);
+}
+
 // process_tm() we need to be able to convert from decimal unit to a print string of time
 //   and then back again.  This can be hard because there are multiple string representations
 //   of time, some of which are better depending on how many digits of precision we desire.
@@ -547,5 +563,5 @@ const bigmult = function(unit) {
 exports = {'pretty_num':pretty_num, 'string_del_tm':string_del_tm, 'process_del_tm':process_del_tm, 'process_tm':process_tm, 
    'hms_connectme':hms_connectme, 'ms_connect_me':ms_connectme,'s_connectme':s_connectme, 'clean_process_string0':clean_process_string0,
     'total_secs':total_secs, 'recast_unit':recast_unit,'compare_two_unit_num':compare_two_unit_num, 'bigmult':bigmult,
-    'clean_process_string0_bi':clean_process_string0_bi, 'uninvert_bi':uninvert_bi, 'process_string_bi':process_string_bi};
+    'clean_process_string0_bi':clean_process_string0_bi, 'uninvert_bi':uninvert_bi, 'process_string_bi':process_string_bi, 'basic_hms':basic_hms};
 module.exports = exports;
