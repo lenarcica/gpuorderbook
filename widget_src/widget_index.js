@@ -27,10 +27,10 @@ const sip_algo = require("../static/internal/ord_algo/sip_algo.js");
 
 const vstr = "widget_index.js: ";
 let verbose = 1;
-var PRINT_N = printer.my_printer(0, vstr); 
+var PRINT_N = printer.make_print_n({'s':[],'verbose':verbose}, vstr); 
 
 PRINT_N(0, "ob.keys is [" + Object.keys(ob).join(", ") + "]");
-PRINT_N("widget_src/ob.js has been opened");
+PRINT_N(0, "widget_src/ob.js has been opened");
 
 var my_widget = null;
 // glwidget: uses OpenGL, gpuwidget: uses WebGPU
@@ -39,6 +39,9 @@ var my_widget = null;
 // Rewriting a widget index using code we have derived.
 console.log("---- widget_index.js --- Calling");
 async function async_gpu_render({ model, el }) {
+  const vstr = "async_gpu_render(): ";
+  console.log("about to declare print n inside async_gpu_render. ");
+  const PRINT_N = printer.make_print_n({'s':[],'verbose':verbose}, vstr);
   PRINT_N(0,"widget_index.js:: async gpu render has been called.  Calling a new obwidget");
   //var my_widget = null;
   try {
