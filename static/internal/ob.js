@@ -78,6 +78,8 @@ const priceFontWid = 18;
 
 const buttons_left_loc = ['1000','1300'];
 
+const button_dim ={'height':60,'width':250,'vmargin':10,'hmargin':10}
+
 
 async function WebGPU_GetAdapterAndDevice() {
   const PRINT_N = printer.make_print_n(default_verbose_ob, "ob.js->WebGPU_GetAdapterAndDevice(): ");
@@ -248,7 +250,7 @@ class obwidget {
     run_algo(my_this, PRINT_N);
     PRINT_N(2, " --- Concluded Running Algorithm.");
   }
-  verify_quotes() {
+  verify_quotes(pdiff) {
     const my_this = this;
     const PRINT_N = printer.make_print_n(my_this.verbose_ob, "ob.js->verify_quotes(): ");
     PRINT_N(1, " Begin verify quotes.");
@@ -256,56 +258,101 @@ class obwidget {
     if ((nbbo === undefined) || (nbbo === null) || (!(nbbo)) || (nbbo.time === undefined)) {
       PRINT_N(-6, "  no nbbo to do verification!"); return(-1);
     }
-    const v_not = nbbo['time'];  const v_nop = nbbo['nbo'];  const eqstate=false; const timetouch= 0;
+    const v_not = nbbo['time'];  const eqstate=false; const timetouch= 0;
     //const srt_nbbo = my_this.verify_levs.make_srt_nbbo(v_nop, v_not);
     const n_nbbo = nbbo['time'].length;
     const nbad = [0,0]; const ncnt = [0,0];
-    const rej_crit = -0.01;
     PRINT_N(1, " We have the first NBBO elements extracted.");
+    if ((pdiff == undefined) || (pdiff == null) || (Number.isNaN(pdiff))) {
+      return;
+    }
+    const n_err=[0,0];
     if (!(!(this.data.buys))) {
+      const v_nop = nbbo['nbo'];
       const srt_nbbo = my_this.verify_levs.make_srt_nbbo(0, v_nop, v_not);
       const nq = my_this.data.buys.price.length;
       const ords = my_this.data.buys;
       PRINT_N(1, " -- working on buys of length " + nq + ".");
-      my_this.data.buys.cross = Array(nq).fill(0);
+      my_this.data.buys.cross = Array(nq).fill(-1);
       //const u_p = [...new Set(ords.price)].sort((a,b)=>(a-b));
       //v_s = Array(nq).fill(0.0); v_p = ords.price; verbose = 1; bs01 = 0;
       const srt_v = my_this.verify_levs.make_srt_v_basic(0, ords.price, ords.open);
       try {
-        nbad[0] = my_this.verify_levs.verify_cross(0, rej_crit, ords.cross,  srt_v, 
+        nbad[0] = my_this.verify_levs.verify_cross(0, pdiff, ords.cross,  srt_v, 
               Array(nq).fill(0), ords.price, ords.open, ords.close,
               srt_nbbo, v_nop, v_not, this.orig.tmax, eqstate, this.verbose_ob, timetouch); 
       } catch {
-        PRINT_N(-6, "Error, failure on verify levs buys. you need to study better!"); debugger;
+        PRINT_N(-6, "TRY_FAIL: Error, failure on verify levs buys. you need to study better!"); debugger;
+      }
+      if ((DEBUG) && (this.verbose_ob >= 2) ) {
+        my_this.data.buys.cross2 = Array(nq).fill(-1);
+        my_this.verify_levs.slow_verify_price(my_this.data.buys.cross2, pdiff, v_s, v_p, v_ot, v_ct,
+              v_nop, v_not, tmax, eqstate, verbose, timetouch);
+        n_err[0] = my_this.verify_levs.validate_out_v(0, pdiff, my_this.data.buys.cross, my_this.data.buys.cross2, 
+           srt_v, v_s, v_p, v_ot, v_ct,
+           srt_nbbo, v_nop, v_not, tmax, eqstate, verbose_ob, timetouch);
+        if (n_err[0] > 0) {
+          PRINT_N(-6, "Error on verify_levs.validate_out_v. Buys."); debugger;
+        }
+        let ob_hit=[];
+        for (let iq = 0; iq < my_this.data.buys.cross.length; iq++) {
+          const cx = my_this.data.buys.cross[iq];
+          if ((cx >= 0) && (cx < my_this.data.nbbo.nbo.length)) {
+            ob_hit.push({'iq':iq, 'cx':cx,'nbo':my_this.data.nbbo.nbo[cx],'nbt':my_this.data.nbbo.time[cx],
+                         'nbnt': ((cx<my_this.data.nbbo.nbo.length-1)?my_this.data.nbbo.time[cx+1]:tmax),
+                         'qp':my_this.data.buys.price[iq],'qq':my_this.data.buys.qty[iq],'qo':my_this.data.buys.open[iq],
+                         'qc':my_this.data.buys.close[iq],'pd':pdiff});
+          }
+        }
+        // nn=my_this.data.nbbo.nbo.length; my_this.data.buys.cross.filter((x)=>((x>=0)&&(x<nn))).map((x)=>my_this.data.nbbo.nbo[x])
+        // nn=my_this.data.nbbo.nbo.length; my_this.data.buys.cross.filter((x)=>((x>=0)&&(x<nn))).map((x)=>my_this.data.nbbo.time[x])
+        // nn=my_this.data.nbbo.nbo.length; my_this.data.buys.cross.filter((x)=>((x>=0)&&(x<nn))).map((x)=>my_this.data.nbbo.nbo[x])
       }
       for (let ii = 0; ii < nq; ii++) {
-        if (ords.cross[ii] > 0) { ncnt[0] = ncnt[0] + 1; }
+        if ((ords.cross[ii] >= 0) && (ords.cross[ii] < v_nop.length)) { ncnt[0] = ncnt[0] + 1; }
       }
       ords.cnt_cross = ncnt[0];
     }
     if (!(!(this.data.sells))) {
-      const srt_nbbo = my_this.verify_levs.make_srt_nbbo(0, v_nop, v_not);
+      const v_nop = nbbo['nbb'];
+      const srt_nbbo = my_this.verify_levs.make_srt_nbbo(1, v_nop, v_not);
       const nq = my_this.data.sells.price.length;
       const ords = my_this.data.sells;
       //const u_p = [...new Set(ords.price)].sort((a,b)=>(b-a));
       PRINT_N(1, " -- working on sells of length " + nq + ".");
-      my_this.data.sells.cross = Array(nq).fill(0);
+      my_this.data.sells.cross = Array(nq).fill(-1);
       //v_s = Array(nq).fill(0.0); v_p = ords.price; verbose = 1; bs01 = 0;
-      const srt_v = my_this.verify_levs.make_srt_v_basic(0, ords.price, ords.open);
+      const srt_v = my_this.verify_levs.make_srt_v_basic(1, ords.price, ords.open);
       try {
-        nbad[1] = my_this.verify_levs.verify_cross(1, rej_crit, ords.cross, srt_v, 
+        nbad[1] = my_this.verify_levs.verify_cross(1, pdiff, ords.cross, srt_v, 
               Array(nq).fill(1), ords.price, ords.open, ords.close,
               srt_nbbo, v_nop, v_not, this.orig.tmax, eqstate, this.verbose_ob, timetouch); 
       } catch {
-        PRINT_N(-6, "Error, failure on verify levs sells. you need to study better!"); debugger;
+        PRINT_N(-6, "TRY_FAIL: Error, failure on verify levs sells. you need to study better!"); debugger;
+      }
+      if ((DEBUG) && (this.verbose_ob >= 2) ) {
+        my_this.data.sells.cross2 = Array(nq).fill(-1);
+        my_this.verify_levs.slow_verify_price(my_this.data.sells.cross2, pdiff, v_s, v_p, v_ot, v_ct,
+              v_nop, v_not, tmax, eqstate, verbose, timetouch);
+        n_err[1] = my_this.verify_levs.validate_out_v(1, pdiff, my_this.data.sells.cross, my_this.data.sells.cross2, 
+           srt_v, v_s, v_p, v_ot, v_ct,
+           srt_nbbo, v_nop, v_not, tmax, eqstate, verbose_ob, timetouch);
+        if (n_err[1] > 0) {
+          PRINT_N(-6, "Error on verify_levs.validate_out_v. Sells"); debugger;
+        }
       }
       for (let ii = 0; ii < nq; ii++) {
-        if (ords.cross[ii] > 0) { ncnt[1] = ncnt[1] + 1; }
+        if ((ords.cross[ii] >= 0) && (ords.cross[ii] < v_nop.length)) { ncnt[1] = ncnt[1] + 1; }
       }
       ords.cnt_cross = ncnt[1];
     }
+    if (n_err[0] + n_err[1] > 0) {
+      PRINT_N(-6, " Perhaps you want to address Near NBBO match errors.");
+    } else {
+      PRINT_N(2, " Note, no Errors were observed in NBBO algo match on re validation n_err=[" + n_err.join(",") + "]");
+    }
     if (ncnt[0] + ncnt[1] > 0) {
-      PRINT_N(-2, " Note Verify Quotes found [" + ncnt.join(",") +"] bad results.");
+      PRINT_N(-2, " Note Assessment of Verify Quotes found [" + ncnt.join(",") +"] crossing results.");
     }
     
   }
@@ -498,11 +545,12 @@ class obwidget {
       my_this.demo_data.null_filter(my_this.data.buys); 
       my_this.demo_data.null_filter(my_this.data.sells); 
       DEBUG && PRINT_N(1, " :: we need to verify quotes for buys and sells.");
-      my_this.verify_quotes();
-      if ((!(!(my_this.data.buys))) && (my_this.data.buys.cnt_cross > 0)) {
+      // Basic verification: just above criterion
+      //my_this.verify_quotes(-0.01);
+      if ((!(!(my_this.data.buys))) && (my_this.data.buys.cnt_cross !== undefined) && (my_this.data.buys.cnt_cross != null) && (my_this.data.buys.cnt_cross > 0)) {
         //my_this.demo_data.hit_filter(my_this.data.buys, my_this.data.buys.cross);
       }
-      if ((!(!(my_this.data.sells))) && (my_this.data.sells.cnt_cross > 0)) {
+      if ((!(!(my_this.data.sells))) && (my_this.data.sells.cnt_cross != undefined) && (my_this.data.sells.cnt_cross != null) && (my_this.data.sells.cnt_cross > 0)) {
         //my_this.demo_data.hit_filter(my_this.data.sells, my_this.data.sells.cross);
       }
     }
@@ -1008,6 +1056,7 @@ class obwidget {
       this.canvasDiv.appendChild(this.canvas_bars);
       this.install_time_drag_button();  // Needs to be after svg_zone configured;
       this.install_run_algo_button();
+      this.install_verify_nbbo_button();
       this.install_export_csv_button();
       this.install_draw_bars();
       this.install_dr_touch();
@@ -1735,21 +1784,62 @@ class obwidget {
       }
     });
   }
+
+  install_verify_nbbo_button() {
+    const my_this = this;
+    const off_color = 'rgb(239,239,239)'; const on_color = 'rgb(60,250,60)';
+    const PRINT_N = printer.make_print_n(this.verbose_ob, "ob.js->install_verify_nbbo_button(): ");
+    this.verify_nbbo_button = document.createElement('button');
+    this.verify_nbbo_button.style.height = button_dim.height + 'px'; this.verify_nbbo_button.style.width = button_dim.width + 'px';
+    this.verify_nbbo_button.setAttribute('id','verify_nbbo_button' + this.randomStr);
+    this.verify_nbbo_button.setAttribute('name','verfiy_nbbo_button');
+    this.verify_nbbo_button.setAttribute('text','NBBO Nearness Algo')
+    this.verify_nbbo_button.style.position = 'absolute'; this.verify_nbbo_button.setAttribute('value','Zoom in Time');
+    this.verify_nbbo_button.setAttribute('height', button_dim.height+'px'); this.verify_nbbo_button.setAttribute('width', button_dim.width +'px')
+    this.verify_nbbo_button.style.backgroundColor = off_color;
+    const vntop = (button_dim.vmargin*3 + button_dim.height) + 'px';
+    this.verify_nbbo_button.setAttribute('top', vntop);   this.verify_nbbo_button.style.top = vntop; 
+    this.verify_nbbo_button.style.left = buttons_left_loc[0] + 'px';
+    this.verify_nbbo_button.setAttribute('left','1100px');
+    this.verify_nbbo_button.innerHTML = 'NBBO Nearness Algo'; this.verify_nbbo_button.style.fontSize = '20px';
+      //my_this.algo_button.addEventListener('click', (event) => { in_this=my_this; console.log("graphing:::algo_button clicked");  debugger;});
+      //my_this.algo_button.addEventListener('onClick', (event) => { in_this=my_this; console.log("graphing:::algo_button clicked"); debugger;});
+    this.verify_nbbo_button.is_down = false;  this.verify_nbbo_button.event0 = null;
+    this.verify_nbbo_button.run_mouse = false;
+    const handle_nbbo_verify_algo = function() {
+       my_this.verify_nbbo_button.run_mouse = false;  my_this.verify_nbbo_button.style.backgroundColor = on_color;
+       PRINT_N(2, "handle_verify_nbbo called");
+       const inn = my_this.formDiv.querySelector("#input_nnear");
+       if ((inn !== undefined) && (inn !== null) && (inn.value !== undefined) && (inn.value !== null) &&
+           (!Number.isNaN(Number(inn.value)))) {
+
+         my_this.verify_nbbo_button.run_mouse = false;  my_this.verify_nbbo_button.style.backgroundColor = on_color;
+         const try_np = Number(inn.value);
+         (DEBUG) && PRINT_N(2, " Running verify quotes algorithm with difference price " + try_np);
+         my_this.verify_quotes(try_np);
+         DEBUG && PRINT_N(2, " verify_quotes has returned values.");
+         my_this.verify_nbbo_button.style.backgroundColor = off_color;
+       }
+    }
+    this.verify_nbbo_button.addEventListener('click', handle_nbbo_verify_algo);
+    this.formDiv.appendChild(this.verify_nbbo_button);
+  }
+
   install_run_algo_button() {
     const my_this = this;
     const off_color = 'rgb(239,239,239)'; const on_color = 'rgb(60,250,60)';
     const PRINT_N = printer.make_print_n(this.verbose_ob, "ob.js->install_run_algo_button(): ");
     this.run_algo_button = document.createElement('button');
-    this.run_algo_button.style.height = '60' + 'px'; this.run_algo_button.style.width = '250' + 'px';
+    this.run_algo_button.style.height = button_dim.height + 'px'; this.run_algo_button.style.width = button_dim.width + 'px';
     this.run_algo_button.setAttribute('id','run_algo_button' + this.randomStr);
     this.run_algo_button.setAttribute('name','run_aglo_button');
     this.run_algo_button.setAttribute('text','Rerun Algo')
-    this.run_algo_button.style.position = 'absolute';  
-    this.run_algo_button.setAttribute('value','Zoom in Time')
-    this.run_algo_button.setAttribute('height','60px')
-    this.run_algo_button.setAttribute('width', '250px')
+    this.run_algo_button.style.position = 'absolute'; this.run_algo_button.setAttribute('value','Zoom in Time');
+    this.run_algo_button.setAttribute('height', button_dim.height+'px'); this.run_algo_button.setAttribute('width', button_dim.width +'px')
     this.run_algo_button.style.backgroundColor = off_color;
-    this.run_algo_button.setAttribute('top', '10px');  this.run_algo_button.style.top = '10px'; this.run_algo_button.style.left = buttons_left_loc[1] + 'px';
+    this.run_algo_button.setAttribute('top', button_dim.vmargin+'px');  
+    this.run_algo_button.style.top = button_dim.vmargin+'px'; 
+    this.run_algo_button.style.left = buttons_left_loc[1] + 'px';
     this.run_algo_button.setAttribute('left','1100px');
     this.run_algo_button.innerHTML = 'Rerun Algo'; this.run_algo_button.style.fontSize = '20px';
       //my_this.algo_button.addEventListener('click', (event) => { in_this=my_this; console.log("graphing:::algo_button clicked");  debugger;});
@@ -1813,30 +1903,31 @@ class obwidget {
     const off_color = 'rgb(239,239,239)'; const on_color = 'rgb(60,250,60)';
     const PRINT_N = printer.make_print_n(this.verbose_ob, "ob.js->export_csv(): ");
     this.export_orders_csv_button = document.createElement('button');
-    this.export_orders_csv_button.style.height = '60' + 'px'; this.export_orders_csv_button.style.width = '250' + 'px';
+    this.export_orders_csv_button.style.height = button_dim.height + 'px'; this.export_orders_csv_button.style.width = button_dim.width + 'px';
     this.export_orders_csv_button.setAttribute('id','export_orders_csv_button' + this.randomStr);
     this.export_orders_csv_button.setAttribute('name','export_orders_csv_button');
     this.export_orders_csv_button.setAttribute('text','Export Csv')
     this.export_orders_csv_button.style.position = 'absolute';  
     this.export_orders_csv_button.setAttribute('value','Export Csv')
-    this.export_orders_csv_button.setAttribute('height','60px')
-    this.export_orders_csv_button.setAttribute('width', '150px')
+    this.export_orders_csv_button.setAttribute('height',button_dim.height+'px'); this.export_orders_csv_button.setAttribute('width', button_dim.width + 'px')
     this.export_orders_csv_button.style.backgroundColor = off_color;
-    this.export_orders_csv_button.setAttribute('top', '90px');  this.export_orders_csv_button.style.top = '90px'; this.export_orders_csv_button.style.left = buttons_left_loc[0] + 'px';
-    this.export_orders_csv_button.setAttribute('left','1400px');
+    const extop = (button_dim.height*2 + (button_dim.vmargin*5)) + 'px';
+    this.export_orders_csv_button.setAttribute('top', extop); this.export_orders_csv_button.style.top = extop; 
+    this.export_orders_csv_button.style.left = buttons_left_loc[0] + 'px';
+    this.export_orders_csv_button.setAttribute('left',buttons_left_loc[0] + 'px');
     this.export_orders_csv_button.innerHTML = 'Export Orders Csv'; this.export_orders_csv_button.style.fontSize = '20px';
     this.export_algo_csv_button = document.createElement('button');
-    this.export_algo_csv_button.style.height = '60' + 'px'; this.export_algo_csv_button.style.width = '250' + 'px';
+    this.export_algo_csv_button.style.height = '60' + 'px'; this.export_algo_csv_button.style.width = button_dim.width + 'px';
     this.export_algo_csv_button.setAttribute('id','export_algo_csv_button' + this.randomStr);
     this.export_algo_csv_button.setAttribute('name','export_algo_csv_button');
-    this.export_algo_csv_button.setAttribute('text','Export Algo Csv')
+    this.export_algo_csv_button.setAttribute('text','Export Algo Csv');
     this.export_algo_csv_button.style.position = 'absolute';  
     this.export_algo_csv_button.setAttribute('value','Export Algo Csv')
-    this.export_algo_csv_button.setAttribute('height','60px')
-    this.export_algo_csv_button.setAttribute('width', '150px')
+    this.export_algo_csv_button.setAttribute('height',button_dim.height + 'px')
+    this.export_algo_csv_button.setAttribute('width', button_dim.width + 'px')
     this.export_algo_csv_button.style.backgroundColor = off_color;
-    this.export_algo_csv_button.setAttribute('top', '90px');  this.export_algo_csv_button.style.top = '90px'; this.export_algo_csv_button.style.left = buttons_left_loc[1] + 'px';
-    this.export_algo_csv_button.setAttribute('left','1400px');
+    this.export_algo_csv_button.setAttribute('top', extop);  this.export_algo_csv_button.style.top = extop; 
+    this.export_algo_csv_button.style.left = buttons_left_loc[1] + 'px'; this.export_algo_csv_button.setAttribute('left',buttons_left_loc[1] + 'px');
     this.export_algo_csv_button.innerHTML = 'Export Algo Csv'; this.export_algo_csv_button.style.fontSize = '20px';
     this.formDiv.appendChild(this.export_orders_csv_button);
     this.formDiv.appendChild(this.export_algo_csv_button);
@@ -1870,17 +1961,17 @@ class obwidget {
     const my_this = this;
     const off_color = 'rgb(239,239,239)'; const on_color = 'rgb(60,250,60)';
     this.time_button = document.createElement('button');
-    this.time_button.style.height = '60' + 'px'; this.time_button.style.width = '250' + 'px';
+    this.time_button.style.height = button_dim.height + 'px'; this.time_button.style.width = button_dim.width + 'px';
     this.time_button.setAttribute('id','time_button' + this.randomStr);
     this.time_button.setAttribute('name','time_button');
     this.time_button.setAttribute('text','Click and Zoom Time-Window')
     this.time_button.style.position = 'absolute';  
     this.time_button.setAttribute('value','Zoom in Time')
-    this.time_button.setAttribute('height','60px')
-    this.time_button.setAttribute('width', '250px')
+    this.time_button.setAttribute('height',button_dim.height + 'px'); this.time_button.setAttribute('width', button_dim.width+'px')
     this.time_button.style.backgroundColor = off_color;
-    this.time_button.setAttribute('top', '10px');  this.time_button.style.top = '10px'; this.time_button.style.left = buttons_left_loc[0] + 'px';
-    this.time_button.setAttribute('left','800px');
+    this.time_button.setAttribute('top', button_dim.vmargin+'px');  this.time_button.style.top = button_dim.vmargin+ 'px'; 
+    this.time_button.style.left = buttons_left_loc[0] + 'px';
+    this.time_button.setAttribute('left',buttons_left_loc[0] + 'px');
     this.time_button.innerHTML = 'Time Window Select'; this.time_button.style.fontSize = '20px';
       //my_this.algo_button.addEventListener('click', (event) => { in_this=my_this; console.log("graphing:::algo_button clicked");  debugger;});
       //my_this.algo_button.addEventListener('onClick', (event) => { in_this=my_this; console.log("graphing:::algo_button clicked"); debugger;});
