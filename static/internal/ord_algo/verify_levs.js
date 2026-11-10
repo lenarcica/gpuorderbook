@@ -703,7 +703,7 @@ out_3 = my_this.verfiy_levs.validate_out_v(bs01, pdiff, out_v, out_v2, srt_v, v_
 
  */
 const verify_cross=function(bs01, pdiff, out_v, srt_v, v_s, v_p, v_ot, v_ct,
-         srt_nbbo, v_nop, v_not, tmax, eqstate, verbose_ob, timetouch) {
+         srt_nbbo, v_nop, v_not, tmax, eqstate, verbose_ob, timetouch, force_time) {
   // -  checking buys(1) or sells(1) or both(2)
   // out_v
   // pdiff our target.
@@ -792,7 +792,8 @@ const verify_cross=function(bs01, pdiff, out_v, srt_v, v_s, v_p, v_ot, v_ct,
     const v_on_p = v_p[srt_v[i_v]]; const v_on_ct = v_ct[srt_v[i_v]]; const v_on_ot = v_ot[srt_v[i_v]];
     DEBUG && PRINT_N(3, ":: LOOP: i_v=" + i_v + "/" + n_v + ": nx = " + nx + ", v_on_p=" + v_on_p + ", v_on_ct=" + v_on_ct);
     if ((v_s !== null) && (v_s[srt_v[i_v]] != bs01)) { break; }
-    DEBUG && PRINT_N(3, ":: ----: i_v=" + i_v + "/" + n_v + ": v_on_ot selected at " + v_on_ot + ", v_on_p=" + v_on_p + " pdiff=" + pdiff + ", on_plev=" + on_plev + " out_b.x=[" + out_ob.x.join(",") + "]");
+    DEBUG && PRINT_N(3, ":: ----: i_v=" + i_v + "/" + n_v + ": v_on_ot selected at " + v_on_ot + 
+      ", v_on_p=" + v_on_p + " pdiff=" + pdiff + ", on_plev=" + on_plev + " out_b.x=[" + out_ob.x.join(",") + "]");
     const on_p_crit = v_on_p + ((bs01==0) ? 1 :-1) * pdiff;
     if ((on_p_crit) != on_plev) {
       DEBUG && PRINT_N(4, ":: ----: i_v=" + i_v + "/" + n_v + ":$" + v_on_p + ", on_p_crit="+on_p_crit+" are greater than on_plev.  We will run fast_alter_cross.");
@@ -886,7 +887,7 @@ const verify_cross=function(bs01, pdiff, out_v, srt_v, v_s, v_p, v_ot, v_ct,
         // In this case all prices are always less if there is any overlap.  Reject, fails on first nbbo
         if ((v_on_ot <= tmax) && (v_on_ct >= v_not[0])) {
           let imin = 0; // Seek first nbbo time overlapping v_on_ot;
-          if (n_n > 1) {
+          if ((force_time==true) && (n_n > 1)) {
             let i_m = 0;  let i_M = n_n-1;
             while((i_M-i_m) > 1) {
               const i_mid = ((Math.floor((i_M+i_m)/2) <= i_m) ? i_m+1 : Math.floor((i_M+i_m)/2));
@@ -927,7 +928,7 @@ const verify_cross=function(bs01, pdiff, out_v, srt_v, v_s, v_p, v_ot, v_ct,
                ": Time and Price Critical [i_v=" + i_v + ",$" + v_on_p + "," + v_on_ot + ":" + v_on_ct + "] " + 
                ", versus nbbo[" + current_n + ",$" + v_nop[current_n] + "," + v_on_not + ":" + v_on_not_next + "]");
              let imin = current_n;
-             if (n_n - current_n > 1) {
+             if ((force_time==true) && (n_n - current_n > 1)) {
                let i_m = imin;  let i_M = n_n-1;
                while((i_M-i_m) > 1) {
                  const i_mid = ((Math.floor((i_M+i_m)/2) <= i_m) ? (i_m+1) : Math.floor((i_M+i_m)/2));
