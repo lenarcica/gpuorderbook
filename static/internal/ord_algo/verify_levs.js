@@ -789,10 +789,9 @@ const verify_cross=function(bs01, pdiff, out_v, srt_v, v_s, v_p, v_ot, v_ct,
     // For loop, we have to label each member of all n_v members of out_v
     //  We will have to loop over prices.
     out_v[srt_v[i_v]] = -1;
-    const v_on_p = v_p[srt_v[i_v]]; const v_on_ct = v_ct[srt_v[i_v]]; 
+    const v_on_p = v_p[srt_v[i_v]]; const v_on_ct = v_ct[srt_v[i_v]]; const v_on_ot = v_ot[srt_v[i_v]];
     DEBUG && PRINT_N(3, ":: LOOP: i_v=" + i_v + "/" + n_v + ": nx = " + nx + ", v_on_p=" + v_on_p + ", v_on_ct=" + v_on_ct);
-    if (v_s[srt_v[i_v]] != bs01) { break; }
-    const v_on_ot = v_ot[srt_v[i_v]];
+    if ((v_s !== null) && (v_s[srt_v[i_v]] != bs01)) { break; }
     DEBUG && PRINT_N(3, ":: ----: i_v=" + i_v + "/" + n_v + ": v_on_ot selected at " + v_on_ot + ", v_on_p=" + v_on_p + " pdiff=" + pdiff + ", on_plev=" + on_plev + " out_b.x=[" + out_ob.x.join(",") + "]");
     const on_p_crit = v_on_p + ((bs01==0) ? 1 :-1) * pdiff;
     if ((on_p_crit) != on_plev) {
@@ -879,13 +878,26 @@ const verify_cross=function(bs01, pdiff, out_v, srt_v, v_s, v_p, v_ot, v_ct,
       if (cbp(v_on_p,v_nop0)) {
         DEBUG && PRINT_N(-6, ":: ----: out_ob.x.len=0: ISSUE v_on_p=" + v_on_p + ", v_nop0 = " + v_nop0 +".  We say critical hit?: debugger 432932");
         debugger;
-        if ((v_on_ot <= v_not[um1(n_n)]) && (v_on_ct >= v_not[0]) && (tmc(v_on_ot, v_on_ct, v_not[0], tmax))) {
+        const v_not0 = v_not[0]; const v_not1 = (v_nop.length > 1) ? v_not[1] : tmax;
+        if ((v_on_ot <= v_not1) && (v_on_ct >= v_not0) && (tmc(v_on_ot, v_on_ct, v_not0, v_not1))) {
           out_v[srt_v[i_v]] = 0; cnt_bad++; continue;
         }
       } else if (out_ob.ip_eq >= n_n) {
         // In this case all prices are always less if there is any overlap.  Reject, fails on first nbbo
-        if ((v_on_ot <= v_not[um1(n_n)]) && (v_on_ct >= v_not[0])) {
-          out_v[srt_v[i_v]] = 0;
+        if ((v_on_ot <= tmax) && (v_on_ct >= v_not[0])) {
+          let imin = 0; // Seek first nbbo time overlapping v_on_ot;
+          if (n_n > 1) {
+            let i_m = 0;  let i_M = n_n-1;
+            while((i_M-i_m) > 1) {
+              const i_mid = ((Math.floor((i_M+i_m)/2) <= i_m) ? i_m+1 : Math.floor((i_M+i_m)/2));
+              if (v_not[i_mid] > v_on_ot) { i_M = i_mid; 
+              } else if (v_not[i_mid] == v_on_ot) { i_M=i_mid; i_m=i_mid;
+              } else { i_m = i_mid; }
+              if ((v_not[i_mid] > v_on_ot) && (i_mid>0) && (v_not[i_mid-1] <= v_on_ot)) { i_m=i_mid-1; i_M=i_mid; }
+            } 
+            imin = i_m;
+          }
+          out_v[srt_v[i_v]] = imin;
         } else {
           cnt_bad++;
           // Crazy case everyone out of range
@@ -914,7 +926,18 @@ const verify_cross=function(bs01, pdiff, out_v, srt_v, v_s, v_p, v_ot, v_ct,
              DEBUG && PRINT_N(3, ":: ----:" + i_v + "/" + n_v + 
                ": Time and Price Critical [i_v=" + i_v + ",$" + v_on_p + "," + v_on_ot + ":" + v_on_ct + "] " + 
                ", versus nbbo[" + current_n + ",$" + v_nop[current_n] + "," + v_on_not + ":" + v_on_not_next + "]");
-             out_v[srt_v[i_v]] = current_n; cnt_bad++; i_x = nx; break;
+             let imin = current_n;
+             if (n_n - current_n > 1) {
+               let i_m = imin;  let i_M = n_n-1;
+               while((i_M-i_m) > 1) {
+                 const i_mid = ((Math.floor((i_M+i_m)/2) <= i_m) ? (i_m+1) : Math.floor((i_M+i_m)/2));
+                 if (v_not[i_mid] > v_on_ot) { i_M=i_mid;
+                 } else if (v_not[i_mid] == v_on_ot) { i_M=i_mid; i_m = i_mid;
+                 } else { i_m = i_mid; }
+               }
+               imin = i_m;
+             }
+             out_v[srt_v[i_v]] = imin; cnt_bad++; i_x = nx; break;
              if ((bs01 ==0) && (srt_v[i_v] == 10)) { 
                PRINT_N(-6, " Let's debug this issue. srt_v[i_v]=" + srt_v[i_v]);
              }
