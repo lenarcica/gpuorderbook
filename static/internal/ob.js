@@ -175,7 +175,7 @@ class obwidget {
   unique_prices = []; oad={}; algo_data = {}; ps = null;  bigmult = pretty_num.bigmult;  ord_algo=ord_algo;
   do_plots = {'do_nbbo':true,'do_trades':true,'do_quotes':true,'do_wp':true}; bars = bars;
   bardr = null; pause_render = false; debug_setting = DEBUG;
-  price_delta = default_price_delta; verfiy_levs=verify_levs;
+  price_delta = default_price_delta; verfiy_levs=verify_levs; force_time = true;
   constructor({model, el}) {
     this.randomStr = (Math.random().toString(36).substring(2, 5) +
           Math.random().toString(36).substring(2, 5));
@@ -280,7 +280,8 @@ class obwidget {
       try {
         nbad[0] = my_this.verify_levs.verify_cross(0, pdiff, ords.cross,  srt_v, 
               Array(nq).fill(0), ords.price, ords.open, ords.close,
-              srt_nbbo, v_nop, v_not, this.orig.tmax, eqstate, this.verbose_ob, timetouch); 
+              srt_nbbo, v_nop, v_not, this.orig.tmax, eqstate, this.verbose_ob, timetouch, 
+                 ((this.force_time == undefined) || (!this.force_time)) ? false : (!(!(this.force_time)))); 
       } catch {
         PRINT_N(-6, "TRY_FAIL: Error, failure on verify levs buys. you need to study better!"); debugger;
       }
@@ -336,7 +337,8 @@ class obwidget {
               v_nop, v_not, tmax, eqstate, verbose, timetouch);
         n_err[1] = my_this.verify_levs.validate_out_v(1, pdiff, my_this.data.sells.cross, my_this.data.sells.cross2, 
            srt_v, v_s, v_p, v_ot, v_ct,
-           srt_nbbo, v_nop, v_not, tmax, eqstate, verbose_ob, timetouch);
+           srt_nbbo, v_nop, v_not, tmax, eqstate, verbose_ob, timetouch,
+                 ((this.force_time == undefined) || (!this.force_time)) ? false : (!(!(this.force_time)))); 
         if (n_err[1] > 0) {
           PRINT_N(-6, "Error on verify_levs.validate_out_v. Sells"); debugger;
         }
