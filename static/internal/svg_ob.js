@@ -590,23 +590,26 @@ buy_range = get_obs_range(data.buys, srt_buys, orig_timeX, priceY, price_delta, 
 MyEventFunction = getEventListeners(my_this.svg_zone).mouseover[0].listener
 */
 const place_svg_buys = function(svg_svg, data, srt_buys, orig_timeX, priceY, price_delta, buy_price_bounds, wpfac, wpmax) {
-   const wtfac = calc_scale_wtfac(data);
-   const wtmin = calc_scale_wtmin(data);
-   const buy_range = get_obs_range(data.buys, srt_buys, orig_timeX, priceY, price_delta, buy_price_bounds, "is_buy");
-   //if (data.keep_iv === null) {
-   //  console.log("Note data.keep_iv is null");
-   //} else {
-   //  console.log("data.keep_iv is not null.  Buy escape"); debugger;
-   //}
-   const iv_filt = (((data.keep_iv === null) || (data.keep_iv === 'all') || (!data.keep_iv)) ? ((x)=>true) : ((x)=>(data.buys.ivs[x] == data.keep_iv)));
-   buy_select = [...buy_range.ret].filter(iv_filt);
-   if (buy_select.length >= 100) {
-     console.log("CONCERNING -- Buy select, something is concerning, we have buy_select of length " + buy_select.length);
-     console.log("  breaking.");
-     debugger;
-   }
-   buy_price_bounds[0] = buy_range.new_range[0];  buy_price_bounds[1] = buy_range.new_range[1];
-
+  const wtfac = calc_scale_wtfac(data);
+  const wtmin = calc_scale_wtmin(data);
+  const buy_range = get_obs_range(data.buys, srt_buys, orig_timeX, priceY, price_delta, buy_price_bounds, "is_buy");
+  //if (data.keep_iv === null) {
+  //  console.log("Note data.keep_iv is null");
+  //} else {
+  //  console.log("data.keep_iv is not null.  Buy escape"); debugger;
+  //}
+  const iv_filt = (((data.keep_iv === null) || (data.keep_iv === 'all') || (!data.keep_iv)) ? ((x)=>true) : ((x)=>(data.buys.ivs[x] == data.keep_iv)));
+  buy_select = [...buy_range.ret].filter(iv_filt);
+  if (buy_select.length >= 100) {
+    console.log("CONCERNING -- Buy select, something is concerning, we have buy_select of length " + buy_select.length);
+    console.log("  breaking.");
+    debugger;
+  }
+  buy_price_bounds[0] = buy_range.new_range[0];  buy_price_bounds[1] = buy_range.new_range[1];
+  draw_svg_buys(svg_svg, data, buy_select);
+  return(buy_select.length);
+}
+const draw_svg_buys  = function(svg_svg,data,buy_select) {
    let blines = svg_svg.getElementById('line_buys_selected');
    if ((blines===null) || (blines===undefined) || (!(blines))) {  
             blines = make_hline("line_buys_selected",-1,-1,-1,'blue',5); blines.setAttribute('z-level',4);
@@ -623,7 +626,6 @@ const place_svg_buys = function(svg_svg, data, srt_buys, orig_timeX, priceY, pri
     }
     prop_mo.tipText = prop_mo.tipText + "<br> --------------------";
   } else { blines.setAttribute('d',''); prop_mo.n_buys = 0;}
-  return(buy_select.length);
 }
 /*
 locX = event.offsetX; locY = event.offsetY;
@@ -657,6 +659,10 @@ const place_svg_sells = function(svg_svg, data, srt_sells, orig_timeX, priceY, p
     debugger;
   }
   sell_price_bounds[0] = sell_range.new_range[0];  sell_price_bounds[1] = sell_range.new_range[1];
+  draw_svg_sells(svg_svg, data, sell_select);
+  return(sell_select.length);
+}
+const draw_svg_sells = function(svg_svg, data, sell_select) {
   let slines = svg_svg.getElementById('line_sells_selected');
   if ((slines===null) || (slines===undefined) || (!(slines))) {  
     slines = make_hline("line_sells_selected",-1,-1,-1,'red',5); slines.setAttribute('z-level',4);svg_svg.appendChild(slines); 
@@ -672,7 +678,6 @@ const place_svg_sells = function(svg_svg, data, srt_sells, orig_timeX, priceY, p
     }
     prop_mo.tipText = prop_mo.tipText + "<br> --------------------";
   } else { slines.setAttribute('d','');  prop_mo.n_sells =0; }
-  return(sell_select.length);
 }
 const place_svg_nbbo = function(svg_svg, data, orig_timeX) {
    const wpfac = (data.height) / (data.pmax-data.pmin); const wpmax = data.pmax;
@@ -1250,5 +1255,5 @@ exports = {"add_svg_mouse_over":add_svg_mouse_over, "make_text_el":make_text_el,
    'generate_lln':generate_lln, 'make_hline':make_hline, 'make_svg_el':make_svg_el, 'write_ttip':write_ttip, 'calc_unscale_wtfac':calc_unscale_wtfac,
    'place_svg_buys':place_svg_buys, 'place_svg_sells':place_svg_sells, 'place_svg_trades':place_svg_trades,
    'calc_unscale_wtmin':calc_unscale_wtmin, 'seek_new_ps':seek_new_ps, 'get_obs_range':get_obs_range, 'calc_scale_wtfac':calc_scale_wtfac, 'calc_scale_wtmin':calc_scale_wtmin, 
-   'update_hline':update_hline, 'update_top':update_top, 'update_bottom':update_bottom}
+   'update_hline':update_hline, 'update_top':update_top, 'update_bottom':update_bottom, 'draw_svg_buys':draw_svg_buys, 'draw_svg_sells':draw_svg_sells}
 module.exports = exports;

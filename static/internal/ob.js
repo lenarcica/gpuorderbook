@@ -1818,6 +1818,11 @@ class obwidget {
          (DEBUG) && PRINT_N(2, " Running verify quotes algorithm with difference price " + try_np);
          my_this.verify_quotes(try_np);
          DEBUG && PRINT_N(2, " verify_quotes has returned values.");
+         const nn = my_this.data.nbbo.time.length;
+         const buy_select = my_this.data.buys.cross.map((x,ix)=>( ((x>=0) && (x<nn)) ? ix : -10)).filter((x)=>(x>=0)); 
+         const sell_select = my_this.data.sells.cross.map((x,ix)=>( ((x>=0) && (x<nn)) ? ix : -10)).filter((x)=>(x>=0)); 
+         my_this.svg_ob.draw_svg_buys(my_this.svg_zone,my_this.data,buy_select);
+         my_this.svg_ob.draw_svg_sells(my_this.svg_zone,my_this.data,sell_select);
          my_this.verify_nbbo_button.style.backgroundColor = off_color;
        }
     }
