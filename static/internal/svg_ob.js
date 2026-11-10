@@ -598,7 +598,7 @@ const place_svg_buys = function(svg_svg, data, srt_buys, orig_timeX, priceY, pri
   //} else {
   //  console.log("data.keep_iv is not null.  Buy escape"); debugger;
   //}
-  const iv_filt = (((data.keep_iv === null) || (data.keep_iv === 'all') || (!data.keep_iv)) ? ((x)=>true) : ((x)=>(data.buys.ivs[x] == data.keep_iv)));
+  const iv_filt = (((data.keep_iv === null) || (data.keep_iv === 'all') || (!(typeof(data.keep_iv)=='number'))) ? ((x)=>true) : ((x)=>(data.buys.ivs[x] == data.keep_iv)));
   buy_select = [...buy_range.ret].filter(iv_filt);
   if (buy_select.length >= 100) {
     console.log("CONCERNING -- Buy select, something is concerning, we have buy_select of length " + buy_select.length);
@@ -651,7 +651,7 @@ const place_svg_sells = function(svg_svg, data, srt_sells, orig_timeX, priceY, p
   const wtmin = calc_scale_wtmin(data);
   const sell_range = get_obs_range(data.sells, srt_sells, orig_timeX, priceY, price_delta, sell_price_bounds, "is_sell");
 
-  const iv_filt = (((data.keep_iv === null) || (data.keep_iv==='all')) ? ((x)=>true) : ((x)=>(data.sells.ivs[x] == data.keep_iv)));
+  const iv_filt = (((data.keep_iv === null) || (data.keep_iv==='all') ||(!(typeof(data.keep_iv) == 'number'))) ? ((x)=>true) : ((x)=>(data.sells.ivs[x] == data.keep_iv)));
   sell_select = [...sell_range.ret].filter(iv_filt);
   if (sell_select.length >= 100) {
     console.log("CONCERNING -- Sell select, something is concerning, we have sell_select of length " + sell_select.length);

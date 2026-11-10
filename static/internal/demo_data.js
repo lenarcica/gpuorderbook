@@ -68,7 +68,7 @@ const hit_filter = function(ords, hits) {
   if (nhits <=0) {
     return(10);
   }
-  const hitfilt = ((x,ix)=>(hits[ix] <=0));
+  const hitfilt = ((x,ix)=>(hits[ix]==true));
   ords.vs = ords.vs.filter(hitfilt);
   ords.qty = ords.qty.filter(hitfilt)
   ords.open = ords.open.filter(hitfilt);

@@ -78,7 +78,7 @@ const priceFontWid = 18;
 
 const buttons_left_loc = ['1000','1300'];
 
-const button_dim ={'height':60,'width':250,'vmargin':10,'hmargin':10}
+const button_dim ={'height':52,'width':250,'vmargin':7,'hmargin':10}
 
 
 async function WebGPU_GetAdapterAndDevice() {
@@ -267,6 +267,9 @@ class obwidget {
       return;
     }
     const n_err=[0,0];
+    if ((this.force_time == undefined) || (this.force_time == null)) {
+      this.force_time = false;
+    }
     if (!(!(this.data.buys))) {
       const v_nop = nbbo['nbo'];
       const srt_nbbo = my_this.verify_levs.make_srt_nbbo(0, v_nop, v_not);
@@ -281,7 +284,7 @@ class obwidget {
         nbad[0] = my_this.verify_levs.verify_cross(0, pdiff, ords.cross,  srt_v, 
               Array(nq).fill(0), ords.price, ords.open, ords.close,
               srt_nbbo, v_nop, v_not, this.orig.tmax, eqstate, this.verbose_ob, timetouch, 
-                 ((this.force_time == undefined) || (!this.force_time)) ? false : (!(!(this.force_time)))); 
+              this.force_time); 
       } catch {
         PRINT_N(-6, "TRY_FAIL: Error, failure on verify levs buys. you need to study better!"); debugger;
       }
@@ -327,7 +330,7 @@ class obwidget {
       try {
         nbad[1] = my_this.verify_levs.verify_cross(1, pdiff, ords.cross, srt_v, 
               Array(nq).fill(1), ords.price, ords.open, ords.close,
-              srt_nbbo, v_nop, v_not, this.orig.tmax, eqstate, this.verbose_ob, timetouch); 
+              srt_nbbo, v_nop, v_not, this.orig.tmax, eqstate, this.verbose_ob, timetouch, this.force_time);
       } catch {
         PRINT_N(-6, "TRY_FAIL: Error, failure on verify levs sells. you need to study better!"); debugger;
       }
@@ -337,8 +340,7 @@ class obwidget {
               v_nop, v_not, tmax, eqstate, verbose, timetouch);
         n_err[1] = my_this.verify_levs.validate_out_v(1, pdiff, my_this.data.sells.cross, my_this.data.sells.cross2, 
            srt_v, v_s, v_p, v_ot, v_ct,
-           srt_nbbo, v_nop, v_not, tmax, eqstate, verbose_ob, timetouch,
-                 ((this.force_time == undefined) || (!this.force_time)) ? false : (!(!(this.force_time)))); 
+           srt_nbbo, v_nop, v_not, tmax, eqstate, verbose_ob, timetouch);
         if (n_err[1] > 0) {
           PRINT_N(-6, "Error on verify_levs.validate_out_v. Sells"); debugger;
         }
@@ -540,6 +542,7 @@ class obwidget {
     const my_this = this;
     this.orig.bi_st0 = bi_st0;
     const mm = (x) => (bi_st0 + BigInt(Math.floor(multi*x)));
+    const nn = my_this.data.nbbo.time.length;
     if ((this.data.is_filtered !== undefined) && (this.data.is_filtered !== null) && (this.data.is_filtered == true)) {
 
     } else {
@@ -548,12 +551,12 @@ class obwidget {
       my_this.demo_data.null_filter(my_this.data.sells); 
       DEBUG && PRINT_N(1, " :: we need to verify quotes for buys and sells.");
       // Basic verification: just above criterion
-      //my_this.verify_quotes(-0.01);
+      my_this.verify_quotes(-0.01);
       if ((!(!(my_this.data.buys))) && (my_this.data.buys.cnt_cross !== undefined) && (my_this.data.buys.cnt_cross != null) && (my_this.data.buys.cnt_cross > 0)) {
-        //my_this.demo_data.hit_filter(my_this.data.buys, my_this.data.buys.cross);
+        my_this.demo_data.hit_filter(my_this.data.buys, my_this.data.buys.cross.map((x,ix)=>((x<0) || (x>=nn) || (my_this.data.buys.vs[ix] != 'market'))));
       }
       if ((!(!(my_this.data.sells))) && (my_this.data.sells.cnt_cross != undefined) && (my_this.data.sells.cnt_cross != null) && (my_this.data.sells.cnt_cross > 0)) {
-        //my_this.demo_data.hit_filter(my_this.data.sells, my_this.data.sells.cross);
+        my_this.demo_data.hit_filter(my_this.data.sells, my_this.data.sells.cross.map((x,ix)=>((x<0)||(x>=nn) || (my_this.data.buys.vs[ix] != 'market'))));
       }
     }
     DEBUG && PRINT_N(1, " Calculating Unique Prices.");
