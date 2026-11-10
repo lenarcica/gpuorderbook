@@ -180,6 +180,7 @@ const fast_alter_cross = function(v_ob, bs01, ptgt, srt_nbbo, v_nop, fa_out_ob) 
     fa_out_ob.prev_ip_u = fa_out_ob.ip_u + 0; fa_out_ob.prev_ptgt = fa_out_ob.ptgt;
     fa_out_ob.prev_ip_eq = fa_out_ob.ip_eq + 0;
   }
+  let new_x = [];
   for (let on_i=0;on_i < nx_0;on_i++) {
     const ii = fa_out_ob.x[on_i];
     const on_p = v_nop[ii];
@@ -188,14 +189,19 @@ const fast_alter_cross = function(v_ob, bs01, ptgt, srt_nbbo, v_nop, fa_out_ob) 
     //  all that matters for last move is if its previous stage had a move.
     const hitp = (ii==0) ? crit_f(ptgt, on_p) : hit_f(v_nop[ii-1], on_p, ptgt);
     const hitn = (ii<nm1) ? hit_f(on_p,v_nop[ii+1], ptgt) : crit_f(ptgt, on_p);
-    if ((hitp != 0)  && ((write_i==0) || fa_out_ob.x[write_i-1] != ii)) {
-      fa_out_ob.x[write_i] = ii;   write_i = write_i + 1;
+    if (hitp != 0) {
+      if (!(new_x.includes(ii))) {
+        fa_out_ob.x.push(ii)
+      }
     }
-    if ((ii < nm1) && (hitn != 0) && ((write_i==0) || (fa_out_ob.x[write_i-1] != ii+1))) {
-      fa_out_ob.x[write_i] = ii+1; write_i = write_i + 1;
+    if ((ii < nm1) && (hitn != 0)) {
+      if (!(new_x.includes(ii+1))) {
+        fa_out_ob.x.push(ii+1);
+      }
     }
   }
-  fa_out_ob.x = fa_out_ob.x.filter((x,i)=>i<write_i); // Everyone else is removed as they are no longer valid skips.
+  //fa_out_ob.x = fa_out_ob.x.filter((x,i)=>i<write_i); // Everyone else is removed as they are no longer valid skips.
+  fa_out_ob.x = [...new_x];
   // Next added members must be from 
   fa_out_ob.ip_u = fa_out_ob.ip_eq;
   if (fa_out_ob.ip_u > 0) { fa_out_ob.ip_u = fa_out_ob.ip_u-1; };
