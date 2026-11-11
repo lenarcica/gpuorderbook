@@ -730,6 +730,7 @@ const verify_cross=function(bs01, pdiff, out_v, srt_v, v_s, v_p, v_ot, v_ct,
   const vstr = ("verify_crosses_" + ((bs01===2) ? "both " : ((bs01==1) ? "sell " : "buy")) + 
     "(pd=" + pdiff + ",v=" + n_v + ",n=" + n_n + ",tt=" + (timetouch ? "touch" : "cross") +"): ");
   const v_ob = {'s':verbose_ob.s, 'verbose': verbose_ob.verbose + (DEBUG) ? 5 : 0};
+  const verbose = verbose_ob.verbose;
   const PRINT_N = printer.make_print_n(v_ob, vstr);
   PRINT_N(1, ": We begin");
   if (typeof(timetouch) != typeof(v_ot[0])) {
@@ -750,9 +751,9 @@ const verify_cross=function(bs01, pdiff, out_v, srt_v, v_s, v_p, v_ot, v_ct,
   if ((bs01==1) && (v_s.length-n_buy <= 0)) { return(0); }
   if ((bs01==2)) {
     return( verify_cross(0,out_ob, srt_v, pdiff,v_s,v_p,v_ot,v_ot,
-              v_nop, v_not, eqstate, verbose_ob, timetouch) + 
+              v_nop, v_not, eqstate, v_ob, timetouch) + 
             verify_cross(1,out_ob, srt_v, pdiff,v_s,v_p,v_ot,v_ot,
-              v_nop, v_not, eqstate, verbose_ob, timetouch)  );
+              v_nop, v_not, eqstate, v_ob, timetouch)  );
   }
   PRINT_N(1, " --- working further to check crosses.");
   let ix = 0; 
@@ -768,7 +769,7 @@ const verify_cross=function(bs01, pdiff, out_v, srt_v, v_s, v_p, v_ot, v_ct,
                ? ((ot,ct,nto,nct) => ((ot<=nct) && (ct>=nto)))
                : ((ot,ct,nto, nct) => (timetouch <= (((nct>ct)?ct:nct) - ((nto>ot)?nto:ot)))  )); 
 
-  if (verbose >= 2) {
+  if (v_ob.verbose >= 2) {
     PRINT_N(2, " --- We are beginning with the vectors we have sorted. ", vstr);
     print_v({'i0':(vstr + ": srt_v,"),'v0':srt_v,'n0':5}); 
     print_v({'i0':(vstr + ": srt_nbbo,"),'v0':srt_nbbo,'n0':5});
@@ -776,7 +777,7 @@ const verify_cross=function(bs01, pdiff, out_v, srt_v, v_s, v_p, v_ot, v_ct,
   if (v_nop.length == 1) {
     PRINT_N(1, " --  We have only a single nbbo might as well do slow algorithm.");
     return(slow_verify_price(out_v, pdiff, v_s, v_p, v_ot, v_ct,
-              v_nop, v_not, tmax, eqstate, verbose_ob, timetouch));
+              v_nop, v_not, tmax, eqstate, v_ob, timetouch));
   }
   //let mut out_v: Vec<u64> = vec![n_n as u64;n_v as usize];
   let on_plev = v_p[srt_v[0]] + pdiff;
@@ -840,7 +841,7 @@ const verify_cross=function(bs01, pdiff, out_v, srt_v, v_s, v_p, v_ot, v_ct,
       DEBUG && PRINT_N(4,":: ----: We have updated fast_alter cross[ip_u:" + out_ob.ip_u + ",ip_eq:" + out_ob.ip_eq + "] = [" +
         (out_ob.x.filter((x,ix)=>(ix < 10)).join(",")) + (out_ob.x.length>10?",...":"") + "]");
       on_ix = 0;
-      if ((DEBUG) && (verbose >= 2)) {
+      if ((DEBUG) && (v_ob.verbose >= 2)) {
         PRINT_N(1, ":: ----: i_v=" + i_v + "/" + n_v + "$" + v_on_p + ": Doing check on Jumps: on_plev=" + on_plev+".");
         if ((out_ob.x === undefined) || (out_ob.x === null)) {
           PRINT_N(-6, " ERROR out_ob.x is null! debugger 669323"); debugger;
@@ -883,7 +884,7 @@ const verify_cross=function(bs01, pdiff, out_v, srt_v, v_s, v_p, v_ot, v_ct,
       debugger; 
     }
     DEBUG && PRINT_N(4, " --- Survived fast alter.");
-    if ((DEBUG) && (verbose >= 3)) {
+    if ((DEBUG) && (v_ob.verbose >= 3)) {
         PRINT_N(3, "\n\n: on (i_v=" + i_v + "/" + srt_v.length + "=srt_v=" + srt_v[i_v] + "), " + 
          "v_p[" + srt_v[i_v] + "]=" + v_p[srt_v[i_v]] + ", ot--ct==[" + basic_hms(v_ot[srt_v[i_v]]) + "--"+basic_hms(v_ct[srt_v[i_v]]) + "]");
         print_v({'i0':("      : out_ob.x"), 'v0':out_ob.x, 'n0':5});
@@ -1010,7 +1011,7 @@ const verify_cross=function(bs01, pdiff, out_v, srt_v, v_s, v_p, v_ot, v_ct,
        }
        DEBUG && PRINT_N(3, ":: ----:" + i_v + "/" + n_v + " ready to loop back.");
     }
-    if ((DEBUG) && (verbose >= 2)) {
+    if ((DEBUG) && (v_ob.verbose >= 2)) {
       console.log(vstr + " -- We reached i_v=" + i_v + "/" + n_v + ", setting out_v[" + srt_v[i_v] + "=" + 
         srt_v[i_v] + "] = " + out_v[srt_v[i_v]]);
     }
