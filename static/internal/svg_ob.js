@@ -276,9 +276,9 @@ const BadPrep = (`
   past_ps = {"i":-1, "bs01":-1,"lev":-1, "price":0.0, "dist":-1};
   new_ps = seek_new_ps(timeXn, priceY, data.ps, past_ps);
 `)
-const place_svg_ps = function(svg_svg, data, timeX, priceY, price_delta, wpfac, wpmax) {
+const place_svg_ps = function(svg_svg, data, timeX, priceY, price_delta, wpfac, wpmax, v_ob) {
   if ((data.ps === null) || (data.ps === undefined)) { past_ps = null; return(-1); }
-  const PRINT_N = (!(DEBUG) ? dPRINT_N : printer.make_print_n(data.verbose_ob, "place_svg_ps"));
+  const PRINT_N = (!(DEBUG) ? dPRINT_N : printer.make_print_n(v_ob, "place_svg_ps"));
   DEBUG && PRINT_N(4, "place_svg_ps: Start.");
   //PRINT_N(-1, " we have placed."); debugger;
   const mult_const = bigmult(data.unit);
@@ -543,7 +543,8 @@ const get_obs_range = function(obs, srts, on_time, on_price, price_delta, pastBo
   }
   return({new_range:new_range, ret:ret});
 }
-const place_svg_trades = function(svg_svg, data, srt_buys, orig_timeX, priceY, price_delta, trade_bounds, wpfac, wpmax, srt_trades) {
+const place_svg_trades = function(svg_svg, data, srt_buys, orig_timeX, priceY, price_delta, trade_bounds, wpfac, wpmax, srt_trades, v_ob) {
+  const PRINT_N = (DEBUG) ? printer.make_print_n(v_ob, "place_svg_trades:() ") : dPRINT_N;
   const time_delta = (price_delta / (data.pmax-data.pmin)) * (data.tmax-data.tmin) * data.origmult;
   const trade_range = get_obs_range_trades(data.trades, srt_trades, orig_timeX, priceY, price_delta,time_delta,trade_bounds, "is_trades"); 
   trade_select = [...trade_range.ret];
@@ -589,7 +590,8 @@ obs = data.buys; srts = srt_buys; on_time = orig_timeX; on_price = priceY; price
 buy_range = get_obs_range(data.buys, srt_buys, orig_timeX, priceY, price_delta, buy_price_bounds, "is_buy");
 MyEventFunction = getEventListeners(my_this.svg_zone).mouseover[0].listener
 */
-const place_svg_buys = function(svg_svg, data, srt_buys, orig_timeX, priceY, price_delta, buy_price_bounds, wpfac, wpmax) {
+const place_svg_buys = function(svg_svg, data, srt_buys, orig_timeX, priceY, price_delta, buy_price_bounds, wpfac, wpmax, v_ob) {
+  const PRINT_N = (DEBUG) ? printer.make_print_n(v_ob, "place_svg_bus(): ") : dPRINT_N;
   const wtfac = calc_scale_wtfac(data);
   const wtmin = calc_scale_wtmin(data);
   const buy_range = get_obs_range(data.buys, srt_buys, orig_timeX, priceY, price_delta, buy_price_bounds, "is_buy");
@@ -601,8 +603,8 @@ const place_svg_buys = function(svg_svg, data, srt_buys, orig_timeX, priceY, pri
   const iv_filt = (((data.keep_iv === null) || (data.keep_iv === 'all') || (!(typeof(data.keep_iv)=='number'))) ? ((x)=>true) : ((x)=>(data.buys.ivs[x] == data.keep_iv)));
   buy_select = [...buy_range.ret].filter(iv_filt);
   if (buy_select.length >= 100) {
-    console.log("CONCERNING -- Buy select, something is concerning, we have buy_select of length " + buy_select.length);
-    console.log("  breaking.");
+    PRINT_N(-6, "CONCERNING -- Buy select, something is concerning, we have buy_select of length " + buy_select.length);
+    PRINT_N(-6, "  breaking.");
     debugger;
   }
   buy_price_bounds[0] = buy_range.new_range[0];  buy_price_bounds[1] = buy_range.new_range[1];
@@ -646,7 +648,8 @@ obs = data.sells; srts = srt_sells; on_time = orig_timeX; on_price = priceY; pri
 sell_range = get_obs_range(data.sells, srt_sells, orig_timeX, priceY, price_delta, sell_price_bounds, "is_sell");
 MyEventFunction = getEventListeners(my_this.svg_zone).mouseover[0].listener
 */
-const place_svg_sells = function(svg_svg, data, srt_sells, orig_timeX, priceY, price_delta, sell_price_bounds, wpfac, wpmax) {
+const place_svg_sells = function(svg_svg, data, srt_sells, orig_timeX, priceY, price_delta, sell_price_bounds, wpfac, wpmax, v_ob) {
+  const PRINT_N = (DEBUG) ? printer.make_print_n(v_ob, "place_svg_sells(): ") : dPRINT_N;
   const wtfac = calc_scale_wtfac(data);
   const wtmin = calc_scale_wtmin(data);
   const sell_range = get_obs_range(data.sells, srt_sells, orig_timeX, priceY, price_delta, sell_price_bounds, "is_sell");
@@ -654,8 +657,8 @@ const place_svg_sells = function(svg_svg, data, srt_sells, orig_timeX, priceY, p
   const iv_filt = (((data.keep_iv === null) || (data.keep_iv==='all') ||(!(typeof(data.keep_iv) == 'number'))) ? ((x)=>true) : ((x)=>(data.sells.ivs[x] == data.keep_iv)));
   sell_select = [...sell_range.ret].filter(iv_filt);
   if (sell_select.length >= 100) {
-    console.log("CONCERNING -- Sell select, something is concerning, we have sell_select of length " + sell_select.length);
-    console.log("  breaking.");
+    PRINT_N(-6, "CONCERNING -- Sell select, something is concerning, we have sell_select of length " + sell_select.length);
+    PRINT_N(-6, "  breaking.");
     debugger;
   }
   sell_price_bounds[0] = sell_range.new_range[0];  sell_price_bounds[1] = sell_range.new_range[1];
@@ -679,9 +682,10 @@ const draw_svg_sells = function(svg_svg, data, sell_select) {
     prop_mo.tipText = prop_mo.tipText + "<br> --------------------";
   } else { slines.setAttribute('d','');  prop_mo.n_sells =0; }
 }
-const place_svg_nbbo = function(svg_svg, data, orig_timeX) {
+const place_svg_nbbo = function(svg_svg, data, orig_timeX, v_ob) {
    const wpfac = (data.height) / (data.pmax-data.pmin); const wpmax = data.pmax;
    const f0bi1 = (typeof(data.nbbo.time[0]) == 'bigint') ? 1 : 0;
+   const PRINT_N = (DEBUG && (v_ob !== null)) ? printer.make_print_n(v_ob, "place_svg_nbbo(): ") : dPRINT_N;
    if (!(!(data.nbbo))) {
      const mult_const = ((f0bi1==1) ? bigmult(data.unit) : data.origmult);
      const st_time_bi = BigInt(pretty_num.process_tm(data.st_time, -9));
@@ -916,6 +920,7 @@ const add_svg_mouse_over = function(svg_div,svg_svg, text_svg, data, text_width,
    // Note, hard part of mouse over is detecting and converting screen locations
    //console.log("add_svg_mouse_over -- Conducting");
    const PRINT_N = (DEBUG) ? my_this.printer.make_print_n(my_this.verbose_ob, "add_svg_mouse_over(): ") : dPRINT_N;
+   const v_ob = (DEBUG) ? my_this.verbose_ob : null;
    past_nbbo_i = -1;
    const our_pd = price_delta;
    let open_i = [];
@@ -1020,10 +1025,10 @@ const add_svg_mouse_over = function(svg_div,svg_svg, text_svg, data, text_width,
         if  ( (!(!(data.nbbo))) && (!(!(data.nbbo.time))) && (data.nbbo.time.length > 0)) {
           if (  (my_this.do_plots === null) || (my_this.do_plots === undefined) || 
                 (my_this.do_plots['do_nbbo'] === undefined) || (my_this.do_plots['do_nbbo'] === true) || (my_this.do_plots['do_nbbo'] === null)) {
-            my_this.svg_ob.ptc.nbbo = place_svg_nbbo(svg_svg, data, orig_timeX);
+            my_this.svg_ob.ptc.nbbo = place_svg_nbbo(svg_svg, data, orig_timeX, v_ob);
           } else {
             // Actually lets keep nbbo balls
-            my_this.svg_ob.ptc.nbbo = place_svg_nbbo(svg_svg, data, orig_timeX);
+            my_this.svg_ob.ptc.nbbo = place_svg_nbbo(svg_svg, data, orig_timeX, v_ob);
           }
         }
         let pttl_1 = prop_mo.tipText.length;
@@ -1033,7 +1038,7 @@ const add_svg_mouse_over = function(svg_div,svg_svg, text_svg, data, text_width,
         if ( (!(!(data.ps.v_b_wp))) && (data.ps.v_b_wp.k.length > 0)) {
           if (  (my_this.do_plots === null) || (my_this.do_plots === undefined) || 
                 (my_this.do_plots['do_wp'] === undefined) || (my_this.do_plots['do_wp'] === true) || (my_this.do_plots['do_wp'] === null)) {
-            my_this.svg_ob.ptc.ps = place_svg_ps(svg_svg, data, timeX, priceY, price_delta, wpfac, wpmax);
+            my_this.svg_ob.ptc.ps = place_svg_ps(svg_svg, data, timeX, priceY, price_delta, wpfac, wpmax, v_ob);
           } else {
           }
         }
@@ -1045,7 +1050,7 @@ const add_svg_mouse_over = function(svg_div,svg_svg, text_svg, data, text_width,
           DEBUG && PRINT_N(5, " Calling place_svg_buys.");
           if (  (my_this.do_plots === null) || (my_this.do_plots === undefined) || 
                 (my_this.do_plots['do_quotes'] === undefined) || (my_this.do_plots['do_quotes'] === true) || (my_this.do_plots['do_quotes'] === null)) {
-            my_this.svg_ob.ptc.buys = place_svg_buys(svg_svg, data, srt_buys, orig_timeX, priceY, price_delta, buy_price_bounds, wpfac, wpmax);
+            my_this.svg_ob.ptc.buys = place_svg_buys(svg_svg, data, srt_buys, orig_timeX, priceY, price_delta, buy_price_bounds, wpfac, wpmax, v_ob);
           } else {
           }
         }
@@ -1056,7 +1061,7 @@ const add_svg_mouse_over = function(svg_div,svg_svg, text_svg, data, text_width,
         if ( (!(!(data.sells)))  && (!(!(data.sells.open))) && (data.sells.open.length > 0)) {
           if (  (my_this.do_plots === null) || (my_this.do_plots === undefined) || 
                 (my_this.do_plots['do_quotes'] === undefined) || (my_this.do_plots['do_quotes'] == true) || (my_this.do_plots['do_quotes'] === null)) {
-            my_this.svg_ob.ptc.sells = place_svg_sells(svg_svg, data, srt_sells, orig_timeX, priceY, price_delta, sell_price_bounds, wpfac, wpmax);
+            my_this.svg_ob.ptc.sells = place_svg_sells(svg_svg, data, srt_sells, orig_timeX, priceY, price_delta, sell_price_bounds, wpfac, wpmax, v_ob);
           } else {
           }
         }
@@ -1068,7 +1073,7 @@ const add_svg_mouse_over = function(svg_div,svg_svg, text_svg, data, text_width,
         if ( (!(!(data.trades))) && (!(!(data.trades.time))) && (data.trades.time.length > 0)) {
           if (  (my_this.do_plots === null) || (my_this.do_plots === undefined) || 
                 (my_this.do_plots['do_trades'] === undefined) || (my_this.do_plots['do_trades'] === true) || (my_this.do_plots['do_trades'] === null)) {
-            my_this.svg_ob.ptc.trades = place_svg_trades(svg_svg, data, srt_buys, orig_timeX, priceY, price_delta, trade_bounds, wpfac, wpmax, srt_trades);
+            my_this.svg_ob.ptc.trades = place_svg_trades(svg_svg, data, srt_buys, orig_timeX, priceY, price_delta, trade_bounds, wpfac, wpmax, srt_trades, v_ob);
           } else {
           }
           //if (trade_range.ret.length > 0) { debugger; }

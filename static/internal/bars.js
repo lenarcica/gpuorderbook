@@ -56,8 +56,8 @@ const calculate_bars_oad = function (oad, data, timeXn)  {
 const demo_sqrt_squish = function(x,mx,wd) {
   return(Math.floor(Math.sqrt(x/mx) * wd));
 }
-const calculate_bars_data= function(data, timeX, squish_func) {
-  const dr = get_relevant_data(data, timeX);
+const calculate_bars_data= function(data, timeX, squish_func, pretty_num, do_plots) {
+  const dr = get_relevant_data(data, timeX, timeX, data.tmin, data.tmax, pretty_num, do_plots);
 
 }
 const get_one_time_qmax = function(dr) {
@@ -169,22 +169,26 @@ const seek_near = function(dr,locX, locY, pmin, pmax, ht) {
   return({'b_near_pi':b_npi, 'b_near_qj': b_near_qj, 's_near_pi':s_npi, 's_near_qj':s_near_qj})
 }
 // cs = calc_side(dr.s, dr.ht, dr.wd, dr.qmax, dr.pmin, dr.pmax, my_this.data.squish_f)
-const calc_side = function(drsd, ht, wd, qmax, pmin, pmax, squish_f) {
+const calc_side = function(drsd, ht, wd, qmax, pmin, pmax, squish_f, unique_venues) {
   if (drsd.vpi.length <= 0) {
     // Null work:
     return({'npi':0, 'vpi':[], 'vp':[], 'vh':[], 'vqm':[]});
   }
   const n_allpi = (drsd.ipmax - drsd.ipmin + 1);
-  let cpi = 1;  const nv = drsd.open.length;  let vpi = []; let onpi = -1;
+  let cpi = 1;  const nv = drsd.open.length;  let vpi = []; let onpi = -1; let ivs = [];
   for (let iti = 0; iti < nv; iti++) {
     if (drsd.vpi[iti] > onpi) {
       onpi = drsd.vpi[iti];
       vpi.push(onpi);
+      ivs.push(drsd.ivs[iti]);
     } 
   }
   const npi = vpi.length;
   const vp = Array(vpi.length).fill(0);
   for (let ii = 0; ii < npi; ii++) { vp[ii] = drsd.u_p[vpi[ii]]; } 
+
+  const vs = Array(ivs.length).fill(0);
+  for (let ii = 0; ii < npi; ii++) { vs[ii] = unique_venues[ivs[ii]]; } 
   const vqm = Array(npi).fill(null);
   const inv_qw = wd;
   let vQ = [];  let vQW = []; let v_idx=[]; onpi = drsd.vpi[0]; let sm = 0; let onprinti = 0;
@@ -199,7 +203,7 @@ const calc_side = function(drsd, ht, wd, qmax, pmin, pmax, squish_f) {
     sm += drsd.qty[iti];  vQ.push(sm);  vQW.push( squish_f(sm, qmax, wd) );  v_idx.push( drsd.idx[iti]);
   }
   vqm[onprinti] = {'q':[...vqm], 'wx':[...vQW], 'idx':[...v_idx] };  onprinti++;
-  return({'npi':npi, 'vpi': vpi, 'vp':vp, 'vqm': vqm, 'n_allpi': n_allpi});
+  return({'npi':npi, 'vpi': vpi, 'vp':vp, 'vqm': vqm, 'vs':vs, 'n_allpi': n_allpi});
 }
 const get_multi_time_qmax = function(dr) {
   const qmax_b = drsd_time_qmax(dr.b);
@@ -241,7 +245,7 @@ const drsd_time_qmax = function (drsd) {
   }
   return({'qmax':t_max, 'qmax_p': drsd.u_p[onpi], 'qmax_pi':onpi, 'qmax_ps': drsd.sd});
 }
-const get_relevant_data = function(data, timeX0, timeX1, targ_pmin, targ_pmax, pretty_num) {
+const get_relevant_data = function(data, timeX0, timeX1, targ_pmin, targ_pmax, pretty_num, do_plots) {
   const nb = data.buys.open.length;
   const db = Array(nb);
   for (let ii = 0; ii < nb; ii++) { db[ii] = ii; }
@@ -249,15 +253,25 @@ const get_relevant_data = function(data, timeX0, timeX1, targ_pmin, targ_pmax, p
   const timeX = (b0w1 == 0) ? timeX0 : null;
   const cmp =  ((timeX0 >= timeX1) ? ( (open,close,timeX0,timeX1) => ((open <= timeX0) && (close > timeX0)) ) :
                                      ( (open,close,timeX0,timeX1) => ((close >= timeX0) && (open < timeX1)) ) );
+  const include_market_buys = (
+   ((do_plots !== undefined) && (do_plots !== null) && (do_plots.do_bars_current !== undefined) &&
+    (do_plots.do_bars_current !== null) && (do_plots.do_bars_current == true) && (data.keep_vs != 'all') && (data.keep_vs != 'All')) ? 
+      ((ii)=>(data.buys.ivs[ii]==data.keep_iv)) : ((ii)=>true));
+
+  const include_market_sells = (
+   ((do_plots !== undefined) && (do_plots !== null) && (do_plots.do_bars_current !== undefined) &&
+    (do_plots.do_bars_current !== null) && (do_plots.do_bars_current == true) && (data.keep_vs !== 'all') && (data.keep_vs != 'All')) ? 
+      ((ii)=>(data.sells.ivs[ii]==data.keep_iv)) : ((ii)=>true));
   const fdb = db.filter(
                (ii)=>( cmp(data.buys.open[ii], data.buys.close[ii], timeX0, timeX1) &&  
-                       (data.buys.price[ii] >= targ_pmin) && (data.buys.price[ii] <= targ_pmax)
+                       (data.buys.price[ii] >= targ_pmin) && (data.buys.price[ii] <= targ_pmax) && include_market_buys(ii)
                      )).sort(
                 (ix,iy)=>(data.buys.vpi[ix] == data.buys.vpi[iy] ? 
                          Number(data.buys.open[ix]-data.buys.open[iy]) :
                          data.buys.vpi[ix] - data.buys.vpi[iy] )         );
   const nfb = fdb.length; const bpmin = data.buys.vpi[fdb[0]];  const bpmax = data.buys.vpi[fdb[fdb.length-1]];
-  const rtb = {'sd':'b','idx': fdb, 'open':Array(nfb), 'close':Array(nfb), 'qty':Array(nfb), 'vpi':Array(nfb), 'ivs':Array(nfb), 'u_p': data.buys.u_p, 'ipmin':bpmin,'ipmax':bpmax};
+  const rtb = {'sd':'b','idx': fdb, 'open':Array(nfb), 'close':Array(nfb), 'qty':Array(nfb), 
+    'vpi':Array(nfb), 'ivs':Array(nfb), 'u_p': data.buys.u_p, 'ipmin':bpmin,'ipmax':bpmax}; 
   for (let ii = 0; ii < nfb; ii++) { rtb.open[ii] = data.buys.open[fdb[ii]] }
   for (let ii = 0; ii < nfb; ii++) { rtb.close[ii] = data.buys.close[fdb[ii]] }
   for (let ii = 0; ii < nfb; ii++) { rtb.qty[ii] = data.buys.qty[fdb[ii]] }
@@ -269,14 +283,15 @@ const get_relevant_data = function(data, timeX0, timeX1, targ_pmin, targ_pmax, p
   for (let ii = 0; ii < ns; ii++) { ds[ii] = ii; }
   const fds = ds.filter(
                (ii)=>( cmp(data.sells.open[ii], data.sells.close[ii], timeX0, timeX1) && 
-                       (data.sells.price[ii] >= targ_pmin) && (data.sells.price[ii] <= targ_pmax)
+                       (data.sells.price[ii] >= targ_pmin) && (data.sells.price[ii] <= targ_pmax) && include_market_sells(ii)
                      )).sort(
                 (ix,iy)=>(data.sells.vpi[ix] == data.sells.vpi[iy] ? 
                          Number(data.sells.open[ix]-data.sells.open[iy]) :
                          data.sells.vpi[ix] - data.sells.vpi[iy] )         );
   const nfs = fds.length;
   const spmin = data.sells.vpi[fds[0]];  const spmax = data.sells.vpi[fds[fds.length-1]];
-  const rts = {'sd':'s', 'idx': fds, 'open':Array(nfs), 'close':Array(nfs), 'qty':Array(nfs), 'vpi':Array(nfs), 'ivs':Array(nfs), 'u_p': data.sells.u_p,'ipmin':spmin,'ipmax':spmax};
+  const rts = {'sd':'s', 'idx': fds, 'open':Array(nfs), 'close':Array(nfs), 'qty':Array(nfs), 
+    'vpi':Array(nfs), 'ivs':Array(nfs), 'u_p': data.sells.u_p,'ipmin':spmin,'ipmax':spmax};
   for (let ii = 0; ii < nfs; ii++) { rts.open[ii] = data.sells.open[fds[ii]] }
   for (let ii = 0; ii < nfs; ii++) { rts.close[ii] = data.sells.close[fds[ii]] }
   for (let ii = 0; ii < nfs; ii++) { rts.qty[ii] = data.sells.qty[fds[ii]] }
@@ -284,24 +299,28 @@ const get_relevant_data = function(data, timeX0, timeX1, targ_pmin, targ_pmax, p
   for (let ii = 0; ii < nfs; ii++) { rts.ivs[ii] = data.sells.ivs[fds[ii]] }
  
   let idx_wpt = -1;  const multi = pretty_num.bigmult(data.unit);
+
   const timeX_bi = (b0w1 == 0) ? BigInt(Math.round(multi * timeX)) + pretty_num.process_string_bi(data.st_time, data.unit) : -1;
+  const timeX0_bi = (b0w1 == 0) ? BigInt(Math.round(multi * timeX0)) + pretty_num.process_string_bi(data.st_time, data.unit) : -1;
+  const timeX1_bi = (b0w1 == 0) ? BigInt(Math.round(multi * timeX1)) + pretty_num.process_string_bi(data.st_time, data.unit) : -1;
   if ((data.ps.wpt !== null) &&  (data.ps.wpt !== undefined) && (!(!(data.ps.wpt)))) {
     const n_t = data.ps.wpt.time.length;
     for (idx_wpt = 0; idx_wpt < n_t-1; idx_wpt++) {
       if (data.ps.wpt.time[idx_wpt+1] > timeX_bi) { break; }
     }
   }
-  let dr = {'b':rtb, 'idx':nfs, 's':rts, 'timeX':timeX, 'pmin':data.pmin, 'pmax':data.pmax, 'wd': data.bar_width, 
-            'ht': data.height, 'unit':data.unit, 'st_time': data.st_time, 'timeX_bi': timeX_bi, 'idx_wpt':idx_wpt, 'b0w1':b0w1};
+  let dr = {'b':rtb, 'idx':nfs, 's':rts, 'timeX':timeX, 'timeX0':timeX0, 'timeX1':timeX1, 'pmin':data.pmin, 'pmax':data.pmax, 'wd': data.bar_width, 
+            'ht': data.height, 'unit':data.unit, 'st_time': data.st_time, 'timeX_bi':timeX_bi,'timeX0_bi': timeX0_bi, 'timeX1_bi':timeX1_bi,'idx_wpt':idx_wpt, 'b0w1':b0w1};
   const qmt = (b0w1 == 0) ? get_one_time_qmax(dr) : get_multi_time_qmax(dr);
   dr['qmax'] = qmt.qmax;  dr['qmax_p'] = qmt.qmax_p;  dr['qmax_ps'] = qmt.qmax_ps;  dr['qmax_pi'] = qmt.qmax_pi;
   dr['pmin'] = data.pmin;  dr['pmax'] = data.pmax;
   if ((data.squish_f === null) || (data.squish_f === undefined) || (typeof(data.squish_f) != 'function')) {
     data.squish_f = demo_sqrt_squish;
   }
-  dr.b['cs'] = (b0w1 == 0) ? calc_side(dr.b, data.height, data.bar_width, dr['qmax'], data.pmin, data.pmax, data.squish_f) : null;
-  dr.s['cs'] = (b0w1 == 0) ? calc_side(dr.s, data.height, data.bar_width, dr['qmax'], data.pmin, data.pmax, data.squish_f) : null;
+  dr.b['cs'] = (b0w1 == 0) ? calc_side(dr.b, data.height, data.bar_width, dr['qmax'], data.pmin, data.pmax, data.squish_f, data.unique_venues) : null;
+  dr.s['cs'] = (b0w1 == 0) ? calc_side(dr.s, data.height, data.bar_width, dr['qmax'], data.pmin, data.pmax, data.squish_f, data.unique_venues) : null;
   if (b0w1 == 1) {
+     dr['timeX_bi'] = BigInt(Math.round(multi * timeX)) + pretty_num.process_string_bi(data.st_time, data.unit);
      dr['timeX0_bi'] = BigInt(Math.round(multi * timeX0)) + pretty_num.process_string_bi(data.st_time, data.unit);
      dr['timeX1_bi'] = BigInt(Math.round(multi * timeX1)) + pretty_num.process_string_bi(data.st_time, data.unit);
   }
@@ -331,5 +350,5 @@ const find_ti = function(ts, timeXn) {
 
 const p_exports = {'find_ti':find_ti, 'get_relevant_data':get_relevant_data, 'calculate_bars_oad':calculate_bars_oad, 
   'get_one_time_qmax':get_one_time_qmax, 'search_p':search_p, 'seek_near':seek_near, 'get_wj':get_wj, 'count_both_np':count_both_np, 'count_only_p':count_only_p, 
-  'get_multi_time_qmax': get_multi_time_qmax, 'drsd_time_qmax': drsd_time_qmax}
+  'get_multi_time_qmax': get_multi_time_qmax, 'drsd_time_qmax': drsd_time_qmax, 'calculate_bars_data':calculate_bars_data}
 module.exports = p_exports;

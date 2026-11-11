@@ -173,7 +173,7 @@ class obwidget {
   renderer = null; device=null; adapter=null; widgetDiv=null; formDiv=null;
   count_renders = 0; draw_ob = draw_ob; svgns = svgns; svg_ob = svg_ob; pretty_num = pretty_num; time_range_dict = [0,1];
   unique_prices = []; oad={}; algo_data = {}; ps = null;  bigmult = pretty_num.bigmult;  ord_algo=ord_algo;
-  do_plots = {'do_nbbo':true,'do_trades':true,'do_quotes':true,'do_wp':true}; bars = bars;
+  do_plots = {'do_nbbo':true,'do_trades':true,'do_quotes':true,'do_wp':true, 'do_bars_current':true}; bars = bars;
   bardr = null; pause_render = false; debug_setting = DEBUG;
   price_delta = default_price_delta; verfiy_levs=verify_levs; force_time = true;
   constructor({model, el}) {
@@ -490,23 +490,23 @@ class obwidget {
       console.log("configure_form_pt: Changer() called.");
       const sv = event.target.value;
       if ((sv == 'all') || (sv=='All')) { 
-        my_this.data.keep_iv = null;
+        my_this.data.keep_iv = null; my_this.data.keep_vs = 'all';
         my_this.data.pl_filt = ((x)=>(true));
       } else if ( ((onm03==3) && (sv == 'market')) || ((onm03==2) && (sv == 'm')) || ((onm03==1) && (sv == 'market'))) {
         if (onm03 == 3) {
-          my_this.data.keep_iv =  my_this.data.nr;
+          my_this.data.keep_iv =  my_this.data.nr; my_this.data.keep_vs='all';
           my_this.data.pl_filt = ((x) => (x==my_this.data.nr));
         } else if (onm03 == 2) {
-          my_this.data.keep_iv = my_this.data.nr;
+          my_this.data.keep_iv = my_this.data.nr; my_this.data.keep_vs='all';
           my_this.data.pl_filt = ((x) => (x==my_this.data.nr));
         } else if (onm03 == 1) {
-          my_this.data.keep_iv = null;
+          my_this.data.keep_iv = null; my_this.data.keep_vs='all';
           my_this.data.pl_filt = ((x) => (true));
         }
       }  else {
         let bri = -1;
         for (let ii = 0; ii < uv.length;ii++) { if (uv[ii] == sv) { bri=ii; break; } }
-        my_this.data.keep_iv = bri;
+        my_this.data.keep_iv = bri; my_this.data.keep_vs = uv[bri];
         my_this.data.pl_filt = ((x) => (x==my_this.data.keep_iv));
       }
       if ((my_this.draw_ob.buffers.uniform_buffer === null) || ((my_this.draw_ob.buffers.buys === null) && (my_this.draw_ob.buffers.sells===null))) {
@@ -525,6 +525,9 @@ class obwidget {
                                              str32(my_this.draw_ob.buffers.buys.ivs,3) + "]")   );
 
 
+      }
+      if ((my_this.bardr !== undefined) && (my_this.bardr !== null) && (typeof(my_this.bardr) == 'object') && (my_this.bardr.timeX !== undefined)) {
+         my_this.add_draw_bar_func();
       }
       if (my_this.draw_ob.buffers.uniform_buffer !== null) { my_this.call_plot(); }
     }
@@ -842,18 +845,37 @@ class obwidget {
       }
       
       this.el.appendChild(this.formDiv);
-      this.configureFormHandles();
-      this.configure_checkbox('drawQuotes','do_quotes');  this.configure_checkbox('drawNBBO', 'do_nbbo');
-      this.configure_checkbox('drawTrades', 'do_trades'); this.configure_checkbox('drawDepths', 'do_wp'); 
+      this.configureFormHandles(); 
+      const nfunc = () =>0;
+      this.configure_checkbox('drawQuotes','do_quotes', nfunc);  this.configure_checkbox('drawNBBO', 'do_nbbo', nfunc);
+      this.configure_checkbox('drawTrades', 'do_trades', nfunc); this.configure_checkbox('drawDepths', 'do_wp', nfunc); 
+    
+      const call_add_draw = function() { my_this.add_draw_bar_func(); }
+      this.configure_checkbox('incl_only_current', 'do_bars_current', call_add_draw);
       DEBUG && PRINT_N(1, "Form is created.");
   }
-  configure_checkbox(check_name,do_name) {
+
+  add_draw_bar_func() {
+    const PRINT_N = this.PRINT_N;
+    const my_this = this;
+    if ((my_this.bardr !== undefined) && (my_this.bardr !== null) && (typeof(my_this.bardr)=='object') &&
+        (my_this.bardr.timeX0 !== undefined) && (my_this.bardr.timeX1 !== undefined)) {
+          my_this.bardr = bars.get_relevant_data(my_this.data, my_this.bardr.timeX0, my_this.bardr.timeX1, 
+              my_this.orig.pmin, my_this.orig.pmax, my_this.pretty_num, my_this.do_plots);
+          if (!(!(my_this.bardr))) {
+            DEBUG && PRINT_N(1, " Putting in line h");
+            my_this.redraw_bar_line();
+            my_this.draw_bars();
+          }
+    } 
+  }
+  configure_checkbox(check_name,do_name, callback_func) {
      const check_box = this.formDiv.querySelector('#' + check_name);
      const my_this = this;
      check_box.addEventListener('change', () => {
        if (check_box.checked) {  my_this.do_plots[do_name] = true;
        } else { my_this.do_plots[do_name] = false; }
-       my_this.call_plot();
+       my_this.call_plot();  callback_func();
      });
   }
   configureFormHandles() {
@@ -914,7 +936,8 @@ class obwidget {
       if (!(this.data.width)) {
         PRINT_N(0, "ERROR configureWidgetGPU - this.data does not have width configured yet."); debugger;
       }
-      this.margins =  {'left': Math.floor(this.data.width * .35), 'top': Math.floor(this.data.height)*.15, 'bottom': Math.floor(this.data.height)*.7, itm:.1, 'right':Math.floor(this.data.width*.2) }
+      this.margins =  {'left': Math.floor(this.data.width * .35), 'top': Math.floor(this.data.height)*.15, 
+                      'bottom': Math.floor(this.data.height)*.7, itm:.1, 'right':Math.floor(this.data.width*.2) }
       const my_this = this;
       this.configureForm();
 
@@ -1667,6 +1690,7 @@ class obwidget {
     DEBUG && this.PRINT_N(0, ": render_price_slider() intiated [" + on_pmin + "," + on_pmax + "]");
     const values_for_time_slider = pretty_num.pretty_num(on_pmin, on_pmax, 5, false);
     const values_inside = values_for_time_slider.filter((x)=> { return((x>=on_pmin) && (x<=on_pmax)) });
+    const my_this = this;
     var price_range_dict = {'min': on_pmin, 'max':on_pmax};
     //for (let ii = 0; ii < values_inside.length; ii++) { ddict[ii] = values_inside; }
     //debugger;
@@ -1697,7 +1721,12 @@ class obwidget {
       if (handle == 1) { this.data.pmax = parseFloat(values[handle]); this.model.set('pmax', this.data.pmax); }
       if (handle == 0) { this.data.pmin = parseFloat(values[handle]); this.model.set('pmin', this.data.pmin); }
 
-      if ((this.bardr !== null) && (this.bardr !== undefined)) { this.draw_bars(); }
+      if ((this.bardr !== null) && (this.bardr !== undefined)) { 
+         my_this.add_draw_bar_func();
+         //my_this.bardr = bars.get_relevant_data(my_this.data, my_this.bardr.timeX0, my_this.bardr.timeX1, 
+         //     my_this.orig.pmin, my_this.orig.pmax, my_this.pretty_num, my_this.do_plots);
+         //this.draw_bars(); 
+      }
       //console.log("set: we now have this.data.tmin/tmax = [" + this.data.tmin + ", " + this.data.tmax + "]");
       this.model.save_changes();
       this.call_plot();
@@ -2226,7 +2255,7 @@ class obwidget {
            }
            const orig_idx = my_this.bardr.b.cs.vqm[rt.b_near_pi].idx[rt.b_near_qj];
            //PRINT_N(1, "lets look for tip"); debugger;
-           my_this.bars_tipText = (my_this.bars_tipText + "<br> BUY[$" + my_this.bardr.b.cs.vp[rt.b_near_pi] + ", " +
+           my_this.bars_tipText = (my_this.bars_tipText + "<br> BUY[vs=" + my_this.bardr.b.cs.vs[rt.b_near_pi] + ",$" + my_this.bardr.b.cs.vp[rt.b_near_pi] + ", " +
               "q=" + my_this.data.buys.qty[orig_idx] + ",<" + 
               (pretty_num.string_del_tm(Number(my_this.data.buys.open[orig_idx]), my_this.orig.unit, my_this.orig.st_time, true) + "--" +
                pretty_num.string_del_tm(Number(my_this.data.buys.close[orig_idx]), my_this.orig.unit, my_this.orig.st_time) + "<]"));
@@ -2247,7 +2276,7 @@ class obwidget {
              my_this.s_bar_line.setAttribute('d', 'M ' + left_x + " " + price_y + " H " + right_x);
            }
            const orig_idx = my_this.bardr.s.cs.vqm[rt.s_near_pi].idx[rt.s_near_qj];
-           my_this.bars_tipText = (my_this.bars_tipText + "<br> SELL[$" + my_this.bardr.s.cs.vp[rt.s_near_pi] + ", " +
+           my_this.bars_tipText = (my_this.bars_tipText + "<br> SELL[vs=" + my_this.bardr.s.cs.vs[rt.s_near_pi] + ",$" + my_this.bardr.s.cs.vp[rt.s_near_pi] + ", " +
               "q=" + my_this.data.sells.qty[orig_idx] + ",<" + 
               (pretty_num.string_del_tm(Number(my_this.data.sells.open[orig_idx]), my_this.orig.unit, my_this.orig.st_time, true) + "--" +
                pretty_num.string_del_tm(Number(my_this.data.sells.close[orig_idx]), my_this.orig.unit, my_this.orig.st_time) + "<]"));
@@ -2281,14 +2310,13 @@ class obwidget {
       if ((locX < 0) || (locX > data.width)) { return(1); }
       const timeX = data.tmin + (data.tmax -data.tmin) * locX / (data.width);
       PRINT_N(1, " timeX determined to be " + timeX + " , for unit " + data.unit + " verus origmult=" + data.origmult + " and orig.unit=" + my_this.orig.unit);
-
+      // bars = my_this.bars; locX = event.offsetX; data = my_this.data; timeX = data.tmin + (data.tmax-data.tmin) * locX / data.width;
       // Bars relevant data will be centered on same t0,t1 time.  If t0,t1 are different can pull all orderbook data.
-      my_this.bardr = bars.get_relevant_data(my_this.data, timeX * data.origmult, timeX * data.origmult, my_this.orig.pmin, my_this.orig.pmax, my_this.pretty_num);
-      if (!(!(my_this.bardr))) {
-        PRINT_N(1, " Putting in line h");
-        my_this.redraw_bar_line();
-        my_this.draw_bars();
-      }
+      my_this.bardr = bars.get_relevant_data(my_this.data, timeX * my_this.data.origmult, 
+          timeX * my_this.data.origmult, my_this.orig.pmin, my_this.orig.pmax, my_this.pretty_num, my_this.do_plots);
+      PRINT_N(1, " Putting in line h");
+      my_this.redraw_bar_line();
+      my_this.draw_bars();
     }
     const out_bars_click = function(event) {
        const PRINT_N = printer.make_print_n(my_this.verbose_ob, "out_bars_click(): ");
@@ -2318,7 +2346,7 @@ class obwidget {
   }
   export_window() {
     const my_this = this;
-    my_this.wd_data = my_this.bars.get_relevant_data(my_this.data, my_this.data.tmin, my_this.data.tmax, my_this.data.pmin, my_this.data.pmax, my_this.pretty_num) 
+    my_this.wd_data = my_this.bars.get_relevant_data(my_this.data, my_this.data.tmin, my_this.data.tmax, my_this.data.pmin, my_this.data.pmax, my_this.pretty_num, my_this.do_plots) 
     my_this.wd_data.ps  = my_this.data.ps.shrink(my_this.wd_data.timeX0_bi, my_this.wd_data.timeX1_bi);
     // timeX0_bi = wd_data.timeX0_bi;  timeX1_bi = wd_data.timeX1_bi;
   }
