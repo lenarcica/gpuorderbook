@@ -163,8 +163,10 @@ const remake_prev_ob = function(out_ob) {
   hit_f = make_hit_f(bs01,ptgt); crit_f = make_crit_f(bs01,ptgt);
   n_n = srt_nbbo.length; nm1 = ixum1(n_n); write_i = 0; 
   fa_out_ob = {'x':[...oout_ob.x], 'ip_eq':oout_ob.ip_eq,  'ip_u':oout_ob.ip_u};
-  nx_0 = fa_out_ob.x.length;
-  fast_alter_cross(bs01, ptgt, srt_nbbo, v_nop, fa_out_ob);
+  nx_0 = fa_out_ob.x.length;  v_ob = {'s':[], verbose:4};
+  fast_alter_cross(v_ob, bs01, ptgt, srt_nbbo, v_nop, fa_out_ob);
+  n_n = srt_nbbo.length;  nm1 = ixum1(n_n); write_i = 0; nx_0 = fa_out_ob.x.length
+  hit_f = make_hit_f(Number(bs01)+0.0);  crit_f = make_crit_f(Number(bs01)+0.0);
  */
 const fast_alter_cross = function(v_ob, bs01, ptgt, srt_nbbo, v_nop, fa_out_ob) {
   // bs01: above or below 0 or 1
@@ -187,16 +189,24 @@ const fast_alter_cross = function(v_ob, bs01, ptgt, srt_nbbo, v_nop, fa_out_ob) 
     // It is possible if we are already in green territory, we can assume red on t=-1
     // Our theory is that last line matters only if it is critical since can't assume jump after
     //  all that matters for last move is if its previous stage had a move.
+
+    //const hitpp = (ii<=1) ? crit_f(ptgt, on_p) : hit_f(v_nop[ii-2], v_nop[ii-1], ptgt);
     const hitp = (ii==0) ? crit_f(ptgt, on_p) : hit_f(v_nop[ii-1], on_p, ptgt);
     const hitn = (ii<nm1) ? hit_f(on_p,v_nop[ii+1], ptgt) : crit_f(ptgt, on_p);
+
+    //if ((ii>=2) && (hitpp != 0)) {
+    //  if (!(new_x.includes(ii-1))) {
+    //    new_x.x.push(ii-1)
+    //  }
+    // }
     if (hitp != 0) {
       if (!(new_x.includes(ii))) {
-        fa_out_ob.x.push(ii)
+        new_x.push(ii)
       }
     }
     if ((ii < nm1) && (hitn != 0)) {
       if (!(new_x.includes(ii+1))) {
-        fa_out_ob.x.push(ii+1);
+        new_x.push(ii+1);
       }
     }
   }
