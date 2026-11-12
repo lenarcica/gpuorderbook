@@ -35,10 +35,10 @@ const make_print_n = function(verbose_ob, stt) {
    }
    const new_print = (verbose, verbose_ob,stt) => (n,xstr) => {
      if (typeof(stt) !== 'string') {
-       console.log("make_print_n->new_print: Error, stt is not a string."); debugger;
+       console.log("make_print_n->new_print: Error, stt supplied to new_print() is not a string."); debugger;
      }
      if (typeof(xstr) !== 'string') {
-       console.log("make_print_n->new_print: Error, xstr is not a string."); debugger;
+       console.log("make_print_n->new_print: Error, xstr supplied to new_print() is not a string."); debugger;
      } 
      if (typeof(n) != 'number') {
        console.log("make_print_n->new_print: Error, n is not a number."); debugger;

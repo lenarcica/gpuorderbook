@@ -1116,7 +1116,9 @@ const add_svg_mouse_over = function(svg_div,svg_svg, text_svg, data, text_width,
         if ((!(ttip_div === null)) && (!(ttip_div===undefined)) && (!(!(ttip_div))) && (!(prop_mo.tipText === null)) && 
           (!(prop_mo.tipText === undefined)) && (!(prop_mo.tipText==''))) {
           const tiptextsize = 18;
-          let nbr = 2 + 1.1 * prop_mo.tipText.match(/<br>/g).length; const nFontSize = 1.2 *tiptextsize;
+          let ppmt = prop_mo.tipText.match(/<br>/g);
+          let ppmtl = ((ppmt === undefined) || (ppmt === null) || (ppmt.length == null)) ? 0 :ppmt.length; 
+          let nbr = 2 + 1.1 * ppmtl; const nFontSize = 1.2 *tiptextsize;
           let ttip_goal_size = [Math.floor(.5 * data.width), Math.floor(nbr * nFontSize)];
           const xTextLoc =  Math.floor(.05 * ttip_goal_size[0]);
           const tts = prop_mo.tipText.split("<br>").map((el)=>{ return('<tspan x="' + xTextLoc + '" dy="1.2em">' + el + '</tspan>') });

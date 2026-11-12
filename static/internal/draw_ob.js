@@ -154,7 +154,7 @@ function OB_generate_gpu_pipeline(gpu_pipeline, gpu_context, adapter, device, a_
     debugger;
   }
   if ((!buffers.uniform_buffer) || (!(buffers.nbbo.time))) {
-    create_data_buffers(device, a_obwidget.data, a_obwidget.verbose_ob)
+    create_data_buffers(device, a_obwidget.data, verbose_ob);
   }
   if (!(buffers.nbbo.time)) {
     PRINT_N(-6, "OB_generate_gpu_pipeline -- error buffers has not populated nbbo vector.");
@@ -613,6 +613,10 @@ async function get_device_buffer(gpu_pipeline, a_device_buffer) {
   } else if (a_device_buffer = gpu_pipeline.device_trades_buffers) {
     sourceBuffer = gpu_pipeline.device_trades_buffers; fData = "trades";
     lengthBuffer = gpu_pipeline.buffers.trades.price.length; 
+  }
+  if ((gpu_pipeline.verbose_ob === undefined) || (gpu_pipeline.verbose_ob == null) || (!(typeof(gpu_pipeline.verbose_ob) == 'object')) ||
+      (gpu_pipeline.verbose_ob.s === undefined) || (gpu_pipeline.verbose_ob.s === null)) {
+    gpu_pipeline.verbose_ob = {'s':[], 'verbose':2};
   }
   const PRINT_N = ((DEBUG) ? printer.make_print_n(gpu_pipeline.verbose_ob, "draw_ob.js->get_device_buffer(" + fData + "): ") : dPRINT_N);
   DEBUG && PRINT_N(1, "  Begin looking for length " + lengthBuffer);
@@ -1090,7 +1094,11 @@ function create_nbbo_bindgroup(device,gpu_pipeline, nbb_or_nbo) {
 
 
 function create_wp_bindgroup(device,gpu_pipeline, bvorsv) {
-  const PRINT_N = printer.make_print_n(verbose_ob,"create_wp_bindgroup:");
+  if ((gpu_pipeline.verbose_ob === undefined) || (gpu_pipeline.verbose_ob === null) || (!(typeof(gpu_pipeline.verbose_ob) == 'object')) || 
+      (gpu_pipeline.verbose_ob.s === undefined) || (gpu_pipeline.verbose_ob.s === null)) {
+    gpu_pipeline.verbose_ob = {'s':[], 'verbose':3}
+  }
+  const PRINT_N = (DEBUG) ? printer.make_print_n(gpu_pipeline.verbose_ob,"create_wp_bindgroup:") : dPRINT_N;
   if (!(gpu_pipeline.device_wp_buffers)) {
     PRINT_N(-10, " ERROR create_wp_bindgroup we don't have device_wp_buffers yet."); debugger;
   } else if (!(gpu_pipeline.device_wp_buffers.time)) {

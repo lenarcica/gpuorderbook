@@ -284,7 +284,7 @@ class obwidget {
         nbad[0] = my_this.verify_levs.verify_cross(0, pdiff, ords.cross,  srt_v, 
               Array(nq).fill(0), ords.price, ords.open, ords.close,
               srt_nbbo, v_nop, v_not, this.orig.tmax, eqstate, this.verbose_ob, timetouch, 
-              this.force_time); 
+              this.force_time, this.data.origmult); 
       } catch {
         PRINT_N(-6, "TRY_FAIL: Error, failure on verify levs buys. you need to study better!"); debugger;
       }
@@ -330,7 +330,7 @@ class obwidget {
       try {
         nbad[1] = my_this.verify_levs.verify_cross(1, pdiff, ords.cross, srt_v, 
               Array(nq).fill(1), ords.price, ords.open, ords.close,
-              srt_nbbo, v_nop, v_not, this.orig.tmax, eqstate, this.verbose_ob, timetouch, this.force_time);
+              srt_nbbo, v_nop, v_not, this.orig.tmax, eqstate, this.verbose_ob, timetouch, this.force_time, this.data.origmult);
       } catch {
         PRINT_N(-6, "TRY_FAIL: Error, failure on verify levs sells. you need to study better!"); debugger;
       }
@@ -559,7 +559,7 @@ class obwidget {
         my_this.demo_data.hit_filter(my_this.data.buys, my_this.data.buys.cross.map((x,ix)=>((x<0) || (x>=nn) || (my_this.data.buys.vs[ix] != 'market'))));
       }
       if ((!(!(my_this.data.sells))) && (my_this.data.sells.cnt_cross != undefined) && (my_this.data.sells.cnt_cross != null) && (my_this.data.sells.cnt_cross > 0)) {
-        my_this.demo_data.hit_filter(my_this.data.sells, my_this.data.sells.cross.map((x,ix)=>((x<0)||(x>=nn) || (my_this.data.buys.vs[ix] != 'market'))));
+        my_this.demo_data.hit_filter(my_this.data.sells, my_this.data.sells.cross.map((x,ix)=>((x<0)||(x>=nn) || (my_this.data.sells.vs[ix] != 'market'))));
       }
     }
     DEBUG && PRINT_N(1, " Calculating Unique Prices.");
