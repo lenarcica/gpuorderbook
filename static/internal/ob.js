@@ -169,7 +169,7 @@ const run_algo = function(my_this, PRINT_N) {
 //export class obwidget {
 class obwidget {
   data = {...demo_data.demo_data};  printer = printer; demo_data=demo_data;
-  gpu_pipeline = null; debug_button=null; verbose_ob=null;
+  gpu_pipeline = null; debug_button=null; reset_button=null; verbose_ob=null;
   renderer = null; device=null; adapter=null; widgetDiv=null; formDiv=null;
   count_renders = 0; draw_ob = draw_ob; svgns = svgns; svg_ob = svg_ob; pretty_num = pretty_num; time_range_dict = [0,1];
   unique_prices = []; oad={}; algo_data = {}; ps = null;  bigmult = pretty_num.bigmult;  ord_algo=ord_algo;
@@ -220,8 +220,8 @@ class obwidget {
     my_this.pause_render = pause_render;
     // Note time_min/time_max taken from object
     DEBUG && this.PRINT_N(1, " Setting debug button.");
-    DEBUG && PRINT_N(1, " Here is debug Button: " + this.debug_button);
-    if ((this.debug_button === undefined) || (this.debug_button === null) || (!(this.debug_button))) {
+    if ((this.reset_button === undefined) || (this.reset_button === null) || (!(this.reset_button))) {
+      DEBUG && PRINT_N(1, " Here is reset Button: " + this.reset_button);
       DEBUG && PRINT_N(1, ":: Running Debug Code configure Default Buttons.");
       debug_code.configureDefaultButtons(my_this);
     }
@@ -764,7 +764,7 @@ class obwidget {
     const PRINT_N = printer.make_print_n(this.verbose_ob, "ob.js->setupWidget()::: ");
     DEBUG && PRINT_N(1,"rrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr");
     DEBUG && PRINT_N(1,"rrr obwidget->class() calling::: setupWidget()");
-    if (!(this.debug_button))  {
+    if (!(this.reset_button))  {
       debug_code.configureDebugButton(this);
     }
     if (!(this.widgetDiv)) {

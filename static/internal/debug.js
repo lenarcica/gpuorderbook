@@ -27,6 +27,7 @@ const install_buttonDiv = function(my_this) {
 const install_debug_button = function(my_this) {
   const PRINT_N = my_this.printer.make_print_n(my_this.verbose_ob, "debug.js->install_debug_button(): ");
   DEBUG && PRINT_N(1, " Install debug button.");
+  if (DEBUG) { return; }
   my_this.debug_button = document.createElement('button');
   my_this.debug_button.style.height = '75' + 'px'; my_this.debug_button.style.width = (debug_button_width) + 'px';
   my_this.debug_button.setAttribute('id','debug_button');
@@ -183,8 +184,8 @@ const install_reset_button = function(my_this) {
   my_this.reset_button.setAttribute('height','100px')
   my_this.reset_button.setAttribute('width', '200px')
   my_this.reset_button.setAttribute('top', '0px');  
-  my_this.debug_button.style.top = '0px'; 
-  my_this.debug_button.style.left = (2*(debug_button_width + debug_button_margin)) + 'px';
+  my_this.reset_button.style.top = '0px'; 
+  my_this.reset_button.style.left = (2*(debug_button_width + debug_button_margin)) + 'px';
   my_this.reset_button.setAttribute('left','400px');
   my_this.reset_button.innerHTML = 'Reset TimeAxis';
   my_this.reset_button.style.fontSize = font_size+'px';
