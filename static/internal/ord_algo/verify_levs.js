@@ -719,7 +719,7 @@ out_3 = my_this.verfiy_levs.validate_out_v(bs01, pdiff, out_v, out_v2, srt_v, v_
 
  */
 const verify_cross=function(bs01, pdiff, out_v, srt_v, v_s, v_p, v_ot, v_ct,
-         srt_nbbo, v_nop, v_not, tmax, eqstate, verbose_ob, timetouch, force_time) {
+         srt_nbbo, v_nop, v_not, tmax, eqstate, verbose_ob, timetouch, force_time, origmult) {
   // -  checking buys(1) or sells(1) or both(2)
   // out_v
   // pdiff our target.
@@ -771,8 +771,8 @@ const verify_cross=function(bs01, pdiff, out_v, srt_v, v_s, v_p, v_ot, v_ct,
 
   if (v_ob.verbose >= 2) {
     PRINT_N(2, " --- We are beginning with the vectors we have sorted. ", vstr);
-    print_v({'i0':(vstr + ": srt_v,"),'v0':srt_v,'n0':5}); 
-    print_v({'i0':(vstr + ": srt_nbbo,"),'v0':srt_nbbo,'n0':5});
+    print_v({'i0':(vstr + ": srt_v,"),'v0':srt_v.filter((x,ix)=>(ix<10)),'n0':5}); 
+    print_v({'i0':(vstr + ": srt_nbbo,"),'v0':srt_nbbo.filter((x,ix)=>(ix<10)),'n0':5});
   }
   if (v_nop.length == 1) {
     PRINT_N(1, " --  We have only a single nbbo might as well do slow algorithm.");
@@ -885,10 +885,24 @@ const verify_cross=function(bs01, pdiff, out_v, srt_v, v_s, v_p, v_ot, v_ct,
     }
     DEBUG && PRINT_N(4, " --- Survived fast alter.");
     if ((DEBUG) && (v_ob.verbose >= 3)) {
-        PRINT_N(3, "\n\n: on (i_v=" + i_v + "/" + srt_v.length + "=srt_v=" + srt_v[i_v] + "), " + 
-         "v_p[" + srt_v[i_v] + "]=" + v_p[srt_v[i_v]] + ", ot--ct==[" + basic_hms(v_ot[srt_v[i_v]]) + "--"+basic_hms(v_ct[srt_v[i_v]]) + "]");
-        print_v({'i0':("      : out_ob.x"), 'v0':out_ob.x, 'n0':5});
-
+       if ((out_ob == null) || (out_ob == undefined) || (out_ob.x == undefined) || (out_ob.x == null)) {
+         PRINT_N(-6, " Error, something is wrong about out_ob x. after fast alter.");
+       }
+       let hms_ot = "NOTFOUND"; let hms_ct = "NOTFOUND"
+        const nv = srt_v.length;  const on_v = srt_v[i_v];
+       try {
+        hms_ot = basic_hms(BigInt(Math.floor(origmult*v_ot[on_v]))); hms_ct = basic_hms(BigInt(Math.floor(origmult*v_ct[on_v])));
+        PRINT_N(3, "\n\n: on (i_v=" + i_v + "/" + nv + "=srt_v=" + on_v + "), " + 
+          "v_p[" + on_v + "]=" + v_p[on_v] + ", ot--ct==[" + hms_ot + "--"+ hms_ct + "]");
+        if ((out_ob.x == null) || (out_ob.x.length <= 0)) {
+          PRINT_N(3, " Error, out_ob.x is of zero length");
+        } else {
+           PRINT_N(3, " out_ob.x is now [" + (out_ob.x.filter((x,ix)=>(ix<10))) + "" + (out_ob.x.length > 10 ? ",..." : "") + "]");
+        }
+       } catch {
+         PRINT_N(-6, " -- failed to get hms_ot or something.");  debugger;
+       }
+        //print_v({'i0':("      : out_ob.x"), 'v0':out_ob.x, 'n0':5});
     }
     if (nx == 0) {
       DEBUG && PRINT_N(2, ":: ----:" + i_v + "/" + n_v + ": Note that an out_ob.x len 0 case has occured.");
