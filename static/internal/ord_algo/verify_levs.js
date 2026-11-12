@@ -884,7 +884,7 @@ const verify_cross=function(bs01, pdiff, out_v, srt_v, v_s, v_p, v_ot, v_ct,
       debugger; 
     }
     DEBUG && PRINT_N(4, " --- Survived fast alter.");
-    if ((DEBUG) && (v_ob.verbose >= 3)) {
+    if ((DEBUG) && (v_ob.verbose >= 5)) {
        if ((out_ob == null) || (out_ob == undefined) || (out_ob.x == undefined) || (out_ob.x == null)) {
          PRINT_N(-6, " Error, something is wrong about out_ob x. after fast alter.");
        }
